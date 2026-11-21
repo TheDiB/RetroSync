@@ -85,3 +85,9 @@ On Linux, process detection examines `/proc/<pid>/comm` and executable argv[0]. 
 ### Colored terminal status labels
 
 Preflight labels are colored automatically when standard output is an interactive terminal: green `PASS`, red `FAIL`, yellow `UNKNOWN`/`WARN`, gray `SKIP`. Only the status label is colored. Colors are disabled for redirected output, `TERM=dumb`, or when the `NO_COLOR` environment variable is present. Use `--color always` to force ANSI colors or `--color never` for plain-text logs. The `--json` output is never colored, and exit codes are unchanged.
+
+## Experimental safe-copy foundation (PR #5)
+
+`safe_copy.py` contains `copy_fixture(...)`, an **isolated-fixture-only** experiment. It is deliberately **not imported by the CLI or planner**. It validates full SHA-256 preconditions, preserves the old destination in a uniquely named verified backup, stages the source in the destination directory, verifies staged bytes, rechecks both inputs, replaces the destination using `os.replace`, and verifies the result. The backup is retained for manual recovery.
+
+Run `python -m unittest discover -s tests -v` to exercise it exclusively with disposable temporary files. **Do not call `copy_fixture` on actual RetroArch saves or NAS data.** This prototype has no inter-process lock, no Batocera coordination, no guarantee against TOCTOU races, and no full power-loss durability protocol (fsync/SMB semantics). Even a successful preflight cannot authorize a real write. Crash recovery and remote concurrency must be designed before a production executor is added.
