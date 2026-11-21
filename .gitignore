@@ -221,3 +221,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# RetroSync local machine configuration and runtime data
+/config.json
+/baseline*.json
+*.srm
+*.state
+*.state[0-9]*

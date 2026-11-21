@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "device_id": "my-device",
+  "nas": {
+    "mount": "/path/to/mounted/share",
+    "expected_source": "//nas.example/Emulation",
+    "remote_root": "Save"
+  },
+  "games": [
+    {
+      "id": "example-game-gbc",
+      "filename": "Example Game (USA)",
+      "local_dir": "/path/to/local/RetroArch/saves",
+      "remote_dir": "gbc"
+    }
+  ]
+}
