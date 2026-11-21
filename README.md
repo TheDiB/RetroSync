@@ -81,3 +81,7 @@ Run `python3 retro_sync.py --config config.json --check` to inspect configuratio
 On Linux, process detection examines `/proc/<pid>/comm` and executable argv[0]. On Windows the process check reports `UNKNOWN`, so `--check` fails closed; Windows unit tests use a simulated Linux process tree. Process scanning is a diagnostic snapshot, not a guarantee that RetroArch cannot start afterward.
 
 **Important:** `remote_emulator_activity: UNKNOWN` is an informational warning because RetroSync cannot determine whether Batocera or another NAS client has a game open. It does not by itself fail the diagnostic command, but **must block any future write-enabled synchronization** until remote concurrency is addressed. No write-enabled mode exists in v0.4. Existing inventory and planner commands remain read-only.
+
+### Colored terminal status labels
+
+Preflight labels are colored automatically when standard output is an interactive terminal: green `PASS`, red `FAIL`, yellow `UNKNOWN`/`WARN`, gray `SKIP`. Only the status label is colored. Colors are disabled for redirected output, `TERM=dumb`, or when the `NO_COLOR` environment variable is present. Use `--color always` to force ANSI colors or `--color never` for plain-text logs. The `--json` output is never colored, and exit codes are unchanged.
