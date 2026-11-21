@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RetroSync: read-only inventory and SRAM decision engine, prototype v0.2."""
+"""RetroSync: read-only inventory, decisions, and sync planning, v0.3."""
 import argparse
 import hashlib
 import json
@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from decision import baseline_hash, decide, load_baseline
+from planner import plan_sram
 
 
 def digest(path):
@@ -80,16 +81,22 @@ def main():
         remote_sha = right.get(srm, {}).get('sha256')
         reference_sha = baseline_hash(baselines, game['id'])
         decision = decide(local_sha, remote_sha, reference_sha)
+        plan = plan_sram(local / srm, remote / srm, local_sha, remote_sha, reference_sha)
         report['games'].append({'id': game['id'], 'local': left, 'remote': right,
                                 'sram_status': status, 'sram_decision': decision,
-                                'baseline_sha256': reference_sha})
+                                'baseline_sha256': reference_sha, 'sram_plan': plan})
     if args.json:
         print(json.dumps(report, indent=2, ensure_ascii=False))
     else:
-        print(f"RetroSync v0.2 | device: {report['device_id']} | READ ONLY")
+        print(f"RetroSync v0.3 | device: {report['device_id']} | READ ONLY")
         print(f"Baseline: {report['baseline'] or 'NONE'}")
         for game in report['games']:
             print(f"\n{game['id']} | SRAM decision: {game['sram_decision']} ({game['sram_status']})")
+            plan = game['sram_plan']
+            print(f"  Plan: {plan['operation']} | {plan['reason']}")
+            if plan['operation'] == 'COPY_PROPOSED':
+                print(f"    from: {plan['source']}")
+                print(f"    to:   {plan['destination']}")
             for side in ('local', 'remote'):
                 entries = game[side]
                 print(f"  {side}: {len(entries)} files")
