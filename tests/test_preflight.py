@@ -11,7 +11,7 @@ class ProcessDetectionTests(unittest.TestCase):
             pid = Path(d) / "123"
             pid.mkdir()
             (pid / "comm").write_text("retroarch\n")
-            (pid / "cmdline").write_bytes(b"/usr/bin/retroarch\\0")
+            (pid / "cmdline").write_bytes(b"/usr/bin/retroarch\0")
             status, _ = detect_retroarch(Path(d), "linux")
             self.assertEqual(status, "RUNNING")
 
@@ -20,7 +20,7 @@ class ProcessDetectionTests(unittest.TestCase):
             pid = Path(d) / "123"
             pid.mkdir()
             (pid / "comm").write_text("steam-runtime\n")
-            (pid / "cmdline").write_bytes(b"/usr/bin/retroarch\\0--verbose\\0")
+            (pid / "cmdline").write_bytes(b"/usr/bin/retroarch\0--verbose\0")
             self.assertEqual(detect_retroarch(Path(d), "linux")[0], "RUNNING")
 
     def test_mentioned_only_in_arguments_is_not_running(self):
@@ -28,7 +28,7 @@ class ProcessDetectionTests(unittest.TestCase):
             pid = Path(d) / "123"
             pid.mkdir()
             (pid / "comm").write_text("bash\n")
-            (pid / "cmdline").write_bytes(b"/bin/bash\\0retroarch\\0")
+            (pid / "cmdline").write_bytes(b"/bin/bash\0retroarch\0")
             self.assertEqual(detect_retroarch(Path(d), "linux")[0], "STOPPED")
 
     def test_windows_unknown(self):
