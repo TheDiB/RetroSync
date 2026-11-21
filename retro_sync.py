@@ -11,6 +11,7 @@ from pathlib import Path
 from decision import baseline_hash, decide, load_baseline
 from planner import plan_sram
 from preflight import preflight, check_exit_code
+from terminal_colors import colorize_status, use_color
 
 
 def digest(path):
@@ -61,6 +62,8 @@ def main():
     parser.add_argument('--json', action='store_true', help='Print machine-readable JSON')
     parser.add_argument('--baseline', type=Path, help='Trusted last-synced SRAM hashes (read only)')
     parser.add_argument('--check', action='store_true', help='Run read-only environment preflight checks')
+    parser.add_argument('--color', choices=('auto', 'always', 'never'), default='auto',
+                        help='Colorize terminal status labels (default: auto)')
     args = parser.parse_args()
     config = json.loads(args.config.read_text(encoding='utf-8'))
     if config.get('schema_version') != 1:
@@ -71,8 +74,10 @@ def main():
             print(json.dumps({'checks': checks}, indent=2, ensure_ascii=False))
         else:
             print('RetroSync v0.4 | PREFLIGHT | READ ONLY')
+            enabled = use_color(args.color, sys.stdout)
             for check in checks:
-                print(f"[{check['status']}] {check['name']}: {check['detail']}")
+                label = colorize_status(check['status'], enabled)
+                print(f"{label} {check['name']}: {check['detail']}")
         return check_exit_code(checks)
     baselines = load_baseline(args.baseline, config['device_id'])
     nas = config['nas']
