@@ -73,3 +73,15 @@ RetroSync now includes a conservative SRAM planner. Each game report contains `s
 Run the same commands as v0.2; optionally pass `--baseline /path/to/trusted-baseline.json`. Both console output and `--json` now show the plan.
 
 **Safety boundary:** v0.3 does not copy, rename, delete, back up, or update any save or baseline. Proposed hashes are *observations*, not verified execution preconditions. Before any future write-enabled version, we must design and test: process/game shutdown detection, fresh hash verification immediately before commit, source/destination path and mount safety, locks, backup/rollback, temporary-file writes and atomic replacement (including SMB constraints), and baseline updates only after verified success. Save states remain inventory-only.
+
+## Preflight diagnostics (v0.4)
+
+Run `python3 retro_sync.py --config config.json --check` to inspect configuration, the exact CIFS NAS mount, local and remote game directories, and local RetroArch processes. Add `--json` for machine-readable checks. The command performs **no writes**, does not attempt to mount the NAS, and returns exit code `2` for blocking failures (or unknown local process state), `0` when local checks pass.
+
+On Linux, process detection examines `/proc/<pid>/comm` and executable argv[0]. On Windows the process check reports `UNKNOWN`, so `--check` fails closed; Windows unit tests use a simulated Linux process tree. Process scanning is a diagnostic snapshot, not a guarantee that RetroArch cannot start afterward.
+
+**Important:** `remote_emulator_activity: UNKNOWN` is an informational warning because RetroSync cannot determine whether Batocera or another NAS client has a game open. It does not by itself fail the diagnostic command, but **must block any future write-enabled synchronization** until remote concurrency is addressed. No write-enabled mode exists in v0.4. Existing inventory and planner commands remain read-only.
+
+### Colored terminal status labels
+
+Preflight labels are colored automatically when standard output is an interactive terminal: green `PASS`, red `FAIL`, yellow `UNKNOWN`/`WARN`, gray `SKIP`. Only the status label is colored. Colors are disabled for redirected output, `TERM=dumb`, or when the `NO_COLOR` environment variable is present. Use `--color always` to force ANSI colors or `--color never` for plain-text logs. The `--json` output is never colored, and exit codes are unchanged.
