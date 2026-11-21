@@ -59,7 +59,10 @@ class SafeCopyFixtureTests(unittest.TestCase):
 
     def test_symlink_destination_blocks(self):
         self.destination.unlink()
-        self.destination.symlink_to(self.source)
+        try:
+            self.destination.symlink_to(self.source)
+        except OSError as exc:
+            self.skipTest(f"Symlink creation unavailable in this environment: {exc}")
         with self.assertRaises(CopyPreconditionError):
             self.execute()
 
