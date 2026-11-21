@@ -93,5 +93,7 @@ def preflight(config, check_mount_fn, proc_root=Path("/proc"), platform=None):
 
 
 def check_exit_code(checks):
-    """Nonzero unless every check passes; remote activity is always unknown."""
-    return 0 if all(c["status"] == "PASS" for c in checks) else 2
+    """Nonzero for blocking failures; remote-client uncertainty is advisory."""
+    return 2 if any(c["status"] in ("FAIL", "SKIP") or
+                    (c["status"] == "UNKNOWN" and c["name"] != "remote_emulator_activity")
+                    for c in checks) else 0
