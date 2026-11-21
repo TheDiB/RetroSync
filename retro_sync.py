@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RetroSync: read-only inventory, prototype v0.1."""
+"""RetroSync: read-only inventory and SRAM decision engine, prototype v0.2."""
 import argparse
 import hashlib
 import json
@@ -7,6 +7,8 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+from decision import baseline_hash, decide, load_baseline
 
 
 def digest(path):
@@ -52,18 +54,20 @@ def inventory(folder, base):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='RetroSync read-only inventory')
+    parser = argparse.ArgumentParser(description='RetroSync read-only inventory and decisions')
     parser.add_argument('--config', type=Path, default=Path(__file__).with_name('config.json'))
     parser.add_argument('--json', action='store_true', help='Print machine-readable JSON')
+    parser.add_argument('--baseline', type=Path, help='Trusted last-synced SRAM hashes (read only)')
     args = parser.parse_args()
     config = json.loads(args.config.read_text(encoding='utf-8'))
     if config.get('schema_version') != 1:
         raise RuntimeError('Unsupported config schema')
+    baselines = load_baseline(args.baseline, config['device_id'])
     nas = config['nas']
     mount = Path(nas['mount'])
     check_mount(mount, nas['expected_source'])
     root = mount / nas['remote_root']
-    report = {'device_id': config['device_id'], 'games': []}
+    report = {'device_id': config['device_id'], 'baseline': str(args.baseline) if args.baseline else None, 'games': []}
     for game in config['games']:
         local = Path(game['local_dir'])
         remote = root / game['remote_dir']
@@ -72,13 +76,20 @@ def main():
         srm = game['filename'] + '.srm'
         status = ('MISSING' if srm not in left or srm not in right else
                   'IDENTICAL' if left[srm]['sha256'] == right[srm]['sha256'] else 'DIFFERENT')
-        report['games'].append({'id': game['id'], 'local': left, 'remote': right, 'sram_status': status})
+        local_sha = left.get(srm, {}).get('sha256')
+        remote_sha = right.get(srm, {}).get('sha256')
+        reference_sha = baseline_hash(baselines, game['id'])
+        decision = decide(local_sha, remote_sha, reference_sha)
+        report['games'].append({'id': game['id'], 'local': left, 'remote': right,
+                                'sram_status': status, 'sram_decision': decision,
+                                'baseline_sha256': reference_sha})
     if args.json:
         print(json.dumps(report, indent=2, ensure_ascii=False))
     else:
-        print(f"RetroSync v0.1 | device: {report['device_id']} | READ ONLY")
+        print(f"RetroSync v0.2 | device: {report['device_id']} | READ ONLY")
+        print(f"Baseline: {report['baseline'] or 'NONE'}")
         for game in report['games']:
-            print(f"\n{game['id']} | SRAM: {game['sram_status']}")
+            print(f"\n{game['id']} | SRAM decision: {game['sram_decision']} ({game['sram_status']})")
             for side in ('local', 'remote'):
                 entries = game[side]
                 print(f"  {side}: {len(entries)} files")
