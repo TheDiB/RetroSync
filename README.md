@@ -61,3 +61,15 @@ For the historical Wario Land II experiment, the Steam Deck SRAM hash copied to 
 ## Credits
 
 RetroSync is created and maintained by [TheDiB](https://github.com/TheDiB), with development assistance from [ChatGPT by OpenAI](https://chatgpt.com) for design discussions, Python implementation, documentation, and tests. All changes are reviewed and validated by the project maintainer.
+
+## Read-only synchronization plans (v0.3)
+
+RetroSync now includes a conservative SRAM planner. Each game report contains `sram_plan`, which records the decision, proposed source/destination paths, the observed source/destination SHA-256 hashes, and whether manual review is required.
+
+- `IN_SYNC` → `NONE`: no action.
+- `PUSH` or `PULL` with a trusted baseline → `COPY_PROPOSED`: a **proposal only**, never executed.
+- `CONFLICT`, `INITIAL_CONFLICT`, or missing files → `BLOCKED`: human review required; never assume deletion or overwrite.
+
+Run the same commands as v0.2; optionally pass `--baseline /path/to/trusted-baseline.json`. Both console output and `--json` now show the plan.
+
+**Safety boundary:** v0.3 does not copy, rename, delete, back up, or update any save or baseline. Proposed hashes are *observations*, not verified execution preconditions. Before any future write-enabled version, we must design and test: process/game shutdown detection, fresh hash verification immediately before commit, source/destination path and mount safety, locks, backup/rollback, temporary-file writes and atomic replacement (including SMB constraints), and baseline updates only after verified success. Save states remain inventory-only.
