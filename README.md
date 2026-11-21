@@ -57,3 +57,7 @@ For the historical Wario Land II experiment, the Steam Deck SRAM hash copied to 
 `--json` includes `sram_decision` and `baseline_sha256` while retaining the v0.1 inventory and `sram_status` fields.
 
 **Limitations:** only SRAM is classified; save states are still listed without sync decisions. The baseline is read-only and not persisted by RetroSync. Decisions are informational, not authorization to overwrite saves.
+
+## Credits
+
+RetroSync is created and maintained by [TheDiB](https://github.com/TheDiB), with development assistance from [ChatGPT by OpenAI](https://chatgpt.com) for design discussions, Python implementation, documentation, and tests. All changes are reviewed and validated by the project maintainer.
