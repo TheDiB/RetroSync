@@ -91,3 +91,9 @@ Preflight labels are colored automatically when standard output is an interactiv
 `safe_copy.py` contains `copy_fixture(...)`, an **isolated-fixture-only** experiment. It is deliberately **not imported by the CLI or planner**. It validates full SHA-256 preconditions, preserves the old destination in a uniquely named verified backup, stages the source in the destination directory, verifies staged bytes, rechecks both inputs, replaces the destination using `os.replace`, and verifies the result. The backup is retained for manual recovery.
 
 Run `python -m unittest discover -s tests -v` to exercise it exclusively with disposable temporary files. **Do not call `copy_fixture` on actual RetroArch saves or NAS data.** This prototype has no inter-process lock, no Batocera coordination, no guarantee against TOCTOU races, and no full power-loss durability protocol (fsync/SMB semantics). Even a successful preflight cannot authorize a real write. Crash recovery and remote concurrency must be designed before a production executor is added.
+
+## Experimental recovery audit (PR #6)
+
+`recovery.py` is **fixture-only** and disconnected from the CLI. Given an explicit backup path and its *trusted* expected SHA-256, `inspect_fixture` reports whether the backup is missing, corrupt, or verified; optionally it compares the current destination with a trusted expected SHA-256. `export_backup_fixture` copies a verified backup to a **new, exclusively created path** for manual review; it never overwrites the destination and never restores automatically.
+
+Tests use disposable local files only: `python -m unittest discover -s tests -v`. No automatic discovery of orphan staging files, no journal, no lock/coordination with Batocera, no atomic recovery transaction, and no guarantee against concurrent writers or power loss. A recovery candidate must be reviewed manually; never run this experimental code against real save files or the NAS.
