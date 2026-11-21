@@ -26,7 +26,7 @@ def detect_retroarch(proc_root=Path("/proc"), platform=None):
     for pid in pids:
         try:
             comm = (pid / "comm").read_text(encoding="utf-8").strip().lower()
-            argv = (pid / "cmdline").read_bytes().split(b"\\0")
+            argv = (pid / "cmdline").read_bytes().split(b"\0")
             executable = os.path.basename(os.fsdecode(argv[0])).lower() if argv and argv[0] else ""
             if comm in ("retroarch", "retroarch.exe") or executable in ("retroarch", "retroarch.exe"):
                 found.append(pid.name)
