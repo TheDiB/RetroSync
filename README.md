@@ -63,6 +63,10 @@ python3 retro_sync.py --config config.json --check --color never
 
 The SRAM planner can propose `PUSH` or `PULL` with a trusted baseline, but does not execute either. Missing files are never treated as deletion instructions. Save states are inventoried, not synchronized.
 
+## Experimental platform discovery (not yet in CLI)
+
+`platform_discovery.py` provides a standalone, read-only API for flat directories with `.srm`, `.state`, and `.stateN` files. It records hashes and declared emulator/core identity on both endpoints, but does **not** infer compatibility, scan nested folders, validate a CIFS mount, or authorize copying. The caller must independently verify any NAS mount before invoking it. See `tests/test_platform_discovery.py` and [architecture](docs/architecture.md). Existing schema v1 and `--setup` are unchanged.
+
 ## Tests
 
 ```bash
