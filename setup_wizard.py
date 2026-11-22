@@ -104,3 +104,47 @@ def run_setup(target, *, dry_run=False, ask=input, say=print):
         raise
     say(f"Created: {target} (no NAS or SSH changes)")
     return 0
+
+
+def run_platform_preview(config, *, verify_mount, ask=input, say=print):
+    """Interactively preview a platform inventory without changing configuration.
+
+    NAS mount verification is mandatory before the remote directory is read.
+    No config file or save is written.
+    """
+    from platform_discovery import discover_platform
+
+    nas = config["nas"]
+    verify_mount(Path(nas["mount"]), nas["expected_source"])
+    say("RetroSync platform preview | READ ONLY | no configuration changes")
+
+    def required(prompt):
+        value = ask(prompt).strip()
+        if not value:
+            raise ValueError(f"Required field missing: {prompt}")
+        return value
+
+    platform_id = required("Platform ID (e.g. gbc): ")
+    local_dir = Path(required("Local platform saves directory (absolute): ")).expanduser()
+    if not local_dir.is_absolute():
+        raise ValueError("Local saves directory must be absolute")
+    remote_dir = required("Remote platform directory relative to NAS saves root (e.g. gbc): ")
+    if (PurePosixPath(remote_dir).is_absolute()
+            or PureWindowsPath(remote_dir).is_absolute()
+            or any(part in (".", "..", "") for part in remote_dir.replace("\\", "/").split("/"))):
+        raise ValueError("Remote platform directory must be relative and traversal-free")
+    local_emulator = ask("Local emulator [retroarch]: ").strip() or "retroarch"
+    local_core = ask("Local core [unknown]: ").strip() or "unknown"
+    remote_emulator = ask("Remote emulator [retroarch]: ").strip() or "retroarch"
+    remote_core = ask("Remote core [unknown]: ").strip() or "unknown"
+    root = Path(nas["mount"]) / nas["remote_root"]
+    mapping = {
+        "id": platform_id,
+        "local": {"emulator": local_emulator, "core": local_core, "save_dir": str(local_dir)},
+        "remote": {"emulator": remote_emulator, "core": remote_core,
+                   "save_dir": str(root / remote_dir)},
+    }
+    report = discover_platform(mapping)
+    say(json.dumps(report, indent=2, ensure_ascii=False))
+    say("READ ONLY: no configuration or save files modified; compatibility not established.")
+    return 0
