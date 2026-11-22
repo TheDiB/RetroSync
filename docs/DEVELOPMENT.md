@@ -28,3 +28,9 @@
 3. Design multi-writer coordination and robust recovery **before** enabling writes.
 
 Keep `README.md` status aligned with the latest merged milestone and mark draft work explicitly.
+
+
+## v0.9 (draft)
+
+- Guided setup: dry run, explicit confirmation, new-file-only config creation.
+- Later increments: SSH key enrollment with verified host identity, recovery/rollback, richer multi-game setup.
