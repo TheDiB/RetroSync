@@ -21,7 +21,7 @@ def build_config(ask=input, say=print):
     device_id = required("Device ID: ")
     mount = required("Existing NAS mount path: ")
     source = required("Expected CIFS source (//server/share): ")
-    remote_root = required("NAS saves root relative to mount [Save]: ") if False else ask("NAS saves root relative to mount [Save]: ").strip() or "Save"
+    remote_root = ask("NAS saves root relative to mount [Save]: ").strip() or "Save"
     game_id = required("Game ID: ")
     filename = required("Game filename without extension: ")
     local_dir = required("Local saves directory: ")
@@ -56,16 +56,14 @@ def validate_setup_config(config):
             raise ValueError("NAS-relative directories must not be absolute or contain . or ..")
     if "batocera" in config:
         from remote_activity import detect_batocera_retroarch
-        # Reuse the existing detector's input validation without making an SSH call.
-        # The detector rejects unsafe host/user before invoking its runner.
         class _NoNetwork:
             def __call__(self, *args, **kwargs):
-                raise AssertionError("Setup validation must never connect")
-        try:
-            detect_batocera_retroarch(config["batocera"]["host"],
-                                     user=config["batocera"]["user"], runner=_NoNetwork())
-        except (ValueError, TypeError) as exc:
-            raise ValueError(f"Invalid Batocera SSH endpoint: {exc}") from exc
+                return type("Result", (), {"returncode": 255, "stdout": ""})()
+        _, detail = detect_batocera_retroarch(
+            config["batocera"]["host"], user=config["batocera"]["user"],
+            runner=_NoNetwork())
+        if detail.startswith("Invalid SSH"):
+            raise ValueError(f"Invalid Batocera SSH endpoint: {detail}")
 
 
 def run_setup(target, *, dry_run=False, ask=input, say=print):
