@@ -9,7 +9,7 @@ import re
 import stat
 from pathlib import Path
 
-_STATE = re.compile(r"^(?P<stem>.+)\\.state(?P<slot>[0-9]*)$", re.IGNORECASE)
+_STATE = re.compile(r"^(?P<stem>.+)\.state(?P<slot>[0-9]*)$", re.IGNORECASE)
 
 
 def classify_save(filename):
