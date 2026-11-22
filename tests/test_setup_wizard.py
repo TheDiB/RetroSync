@@ -38,6 +38,14 @@ class SetupWizardTests(unittest.TestCase):
             self.assertEqual(config["batocera"]["host"], "batocera.local")
             self.assertEqual(config["games"][0]["remote_dir"], "gbc")
 
+    def test_short_y_confirms_creation(self):
+        with tempfile.TemporaryDirectory() as d:
+            target = Path(d) / "config.json"
+            self.assertEqual(run_setup(target, ask=prompt_from(ANSWERS + ["y"]),
+                                       say=lambda _: None), 0)
+            self.assertTrue(target.is_file())
+            self.assertEqual(json.loads(target.read_text())["schema_version"], 1)
+
     def test_existing_config_is_never_overwritten(self):
         with tempfile.TemporaryDirectory() as d:
             target = Path(d) / "config.json"
