@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RetroSync: read-only inventory, decisions, and sync planning, v0.4."""
+"""RetroSync: read-only inventory, decisions, and sync planning, v0.8."""
 import argparse
 import hashlib
 import json
@@ -73,7 +73,7 @@ def main():
         if args.json:
             print(json.dumps({'checks': checks}, indent=2, ensure_ascii=False))
         else:
-            print('RetroSync v0.4 | PREFLIGHT | READ ONLY')
+            print('RetroSync v0.8 | PREFLIGHT | READ ONLY')
             enabled = use_color(args.color, sys.stdout)
             for check in checks:
                 label = colorize_status(check['status'], enabled)
@@ -104,7 +104,7 @@ def main():
     if args.json:
         print(json.dumps(report, indent=2, ensure_ascii=False))
     else:
-        print(f"RetroSync v0.4 | device: {report['device_id']} | READ ONLY")
+        print(f"RetroSync v0.8 | device: {report['device_id']} | READ ONLY")
         print(f"Baseline: {report['baseline'] or 'NONE'}")
         for game in report['games']:
             print(f"\n{game['id']} | SRAM decision: {game['sram_decision']} ({game['sram_status']})")
