@@ -105,7 +105,9 @@ class SetupWizardTests(unittest.TestCase):
                 config, verify_mount=lambda *args: calls.append(args),
                 ask=prompt_from(answers), say=output.append), 0)
             self.assertEqual(len(calls), 1)
-            report = json.loads(output[-4])
+            report = json.loads(output[-5])
+            self.assertIn("STATUS", output[-2])
+            self.assertIn("Wario.srm", output[-2])
             self.assertTrue(report["complete"])
             self.assertEqual(report["endpoints"]["local"]["core"], "mgba")
             self.assertEqual(report["endpoints"]["remote"]["files"][0]["slot"], 2)
