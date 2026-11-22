@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RetroSync: read-only inventory, decisions, and sync planning, v0.8."""
+"""RetroSync: read-only inventory, decisions, and sync planning, v0.9."""
 import argparse
 import hashlib
 import json
@@ -12,6 +12,7 @@ from decision import baseline_hash, decide, load_baseline
 from planner import plan_sram
 from preflight import preflight, check_exit_code
 from terminal_colors import colorize_status, use_color
+from setup_wizard import run_setup
 
 
 def digest(path):
@@ -62,9 +63,15 @@ def main():
     parser.add_argument('--json', action='store_true', help='Print machine-readable JSON')
     parser.add_argument('--baseline', type=Path, help='Trusted last-synced SRAM hashes (read only)')
     parser.add_argument('--check', action='store_true', help='Run read-only environment preflight checks')
+    parser.add_argument('--setup', action='store_true', help='Guided configuration, never overwrite existing files')
+    parser.add_argument('--dry-run', action='store_true', help='Preview setup without writing')
     parser.add_argument('--color', choices=('auto', 'always', 'never'), default='auto',
                         help='Colorize terminal status labels (default: auto)')
     args = parser.parse_args()
+    if args.dry_run and not args.setup:
+        parser.error('--dry-run requires --setup')
+    if args.setup:
+        return run_setup(args.config, dry_run=args.dry_run)
     config = json.loads(args.config.read_text(encoding='utf-8'))
     if config.get('schema_version') != 1:
         raise RuntimeError('Unsupported config schema')
@@ -73,7 +80,7 @@ def main():
         if args.json:
             print(json.dumps({'checks': checks}, indent=2, ensure_ascii=False))
         else:
-            print('RetroSync v0.8 | PREFLIGHT | READ ONLY')
+            print('RetroSync v0.9 | PREFLIGHT | READ ONLY')
             enabled = use_color(args.color, sys.stdout)
             for check in checks:
                 label = colorize_status(check['status'], enabled)
@@ -104,7 +111,7 @@ def main():
     if args.json:
         print(json.dumps(report, indent=2, ensure_ascii=False))
     else:
-        print(f"RetroSync v0.8 | device: {report['device_id']} | READ ONLY")
+        print(f"RetroSync v0.9 | device: {report['device_id']} | READ ONLY")
         print(f"Baseline: {report['baseline'] or 'NONE'}")
         for game in report['games']:
             print(f"\n{game['id']} | SRAM decision: {game['sram_decision']} ({game['sram_status']})")
