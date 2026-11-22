@@ -1,3 +1,9 @@
+## v0.9 (in development)
+
+- First interactive `--setup` configuration wizard and `--dry-run` preview.
+- Explicit confirmation, exclusive new-file creation, and refusal to overwrite existing configs.
+- No automatic SSH enrollment, NAS mounting, or save writes.
+
 # Changelog
 
 RetroSync uses incremental development milestones. These are project milestones, not necessarily packaged releases.
