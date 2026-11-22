@@ -72,6 +72,60 @@ class PreflightTests(unittest.TestCase):
             self.assertEqual(check_exit_code(checks), 0)
             self.assertEqual(checks[-1]["status"], "UNKNOWN")
 
+    def test_remote_batocera_states(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "Save" / "gbc").mkdir(parents=True)
+            config = {"schema_version": 1, "nas": {
+                "mount": d, "expected_source": "//nas/Emulation",
+                "remote_root": "Save"}, "games": [{
+                    "id": "wario", "filename": "Wario", "local_dir": d,
+                    "remote_dir": "gbc"}],
+                "batocera": {"host": "192.168.1.75", "user": "root"}}
+            for state, expected, exit_code in (
+                ("RUNNING", "FAIL", 2),
+                ("STOPPED", "PASS", 0),
+                ("UNKNOWN", "UNKNOWN", 0),
+            ):
+                with self.subTest(state=state):
+                    calls = []
+                    def detector(host, *, user):
+                        calls.append((host, user))
+                        return state, "test remote state"
+                    with tempfile.TemporaryDirectory() as proc:
+                        checks = preflight(config, lambda *_: None, Path(proc),
+                                           "linux", remote_detector=detector)
+                    self.assertEqual(calls, [("192.168.1.75", "root")])
+                    self.assertEqual(checks[-1]["status"], expected)
+                    self.assertEqual(check_exit_code(checks), exit_code)
+
+    def test_invalid_remote_configuration_fails(self):
+        config = {"schema_version": 1, "nas": {
+            "mount": "/tmp", "expected_source": "//nas/Emulation",
+            "remote_root": "Save"}, "games": [{
+                "id": "wario", "filename": "Wario", "local_dir": "/tmp",
+                "remote_dir": "gbc"}], "batocera": {"user": "root"}}
+        checks = preflight(config, lambda *_: None)
+        self.assertEqual(checks[-1]["status"], "FAIL")
+        self.assertEqual(check_exit_code(checks), 2)
+
+    def test_remote_detector_exception_is_unknown(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "Save" / "gbc").mkdir(parents=True)
+            config = {"schema_version": 1, "nas": {
+                "mount": d, "expected_source": "//nas/Emulation",
+                "remote_root": "Save"}, "games": [{
+                    "id": "wario", "filename": "Wario", "local_dir": d,
+                    "remote_dir": "gbc"}], "batocera": {"host": "batocera"}}
+            def broken(*args, **kwargs):
+                raise RuntimeError("simulated")
+            with tempfile.TemporaryDirectory() as proc:
+                checks = preflight(config, lambda *_: None, Path(proc),
+                                   "linux", remote_detector=broken)
+            self.assertEqual(checks[-1]["status"], "UNKNOWN")
+            self.assertEqual(check_exit_code(checks), 0)
+
     def test_bad_schema_fails(self):
         checks = preflight({"schema_version": 99}, lambda *_: None)
         self.assertEqual(check_exit_code(checks), 2)

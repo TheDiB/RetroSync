@@ -6,6 +6,10 @@
     "expected_source": "//nas.example/Emulation",
     "remote_root": "Save"
   },
+  "batocera": {
+    "host": "batocera.example",
+    "user": "root"
+  },
   "games": [
     {
       "id": "example-game-gbc",
