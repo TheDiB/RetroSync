@@ -5,7 +5,7 @@ configuration files are performed.
 """
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 
 def build_config(ask=input, say=print):
@@ -46,13 +46,15 @@ def validate_setup_config(config):
     nas = config["nas"]
     if not nas["expected_source"].startswith("//") or len(nas["expected_source"].split("/")) < 4:
         raise ValueError("Expected CIFS source must look like //server/share")
-    if not Path(nas["mount"]).is_absolute():
+    def absolute(value):
+        return PurePosixPath(value).is_absolute() or PureWindowsPath(value).is_absolute()
+    if not absolute(nas["mount"]):
         raise ValueError("NAS mount must be an absolute path")
-    if not Path(config["games"][0]["local_dir"]).is_absolute():
+    if not absolute(config["games"][0]["local_dir"]):
         raise ValueError("Local saves directory must be an absolute path")
     for value in (nas["remote_root"], config["games"][0]["remote_dir"]):
         p = Path(value)
-        if p.is_absolute() or any(part in (".", "..") for part in value.replace("\\", "/").split("/")):
+        if absolute(value) or any(part in (".", "..") for part in value.replace("\\", "/").split("/")):
             raise ValueError("NAS-relative directories must not be absolute or contain . or ..")
     if "batocera" in config:
         from remote_activity import detect_batocera_retroarch
