@@ -22,6 +22,24 @@ class RemoteActivityTests(unittest.TestCase):
         self.assertEqual(status, "RUNNING")
         self.assertIn("3810", detail)
 
+    def test_unrelated_zombie_does_not_hide_running_retroarch(self):
+        listing = PLAYING + " 1429 uname <defunct>\\n"
+        status, detail = parse_process_list(listing)
+        self.assertEqual(status, "RUNNING")
+        self.assertIn("3810", detail)
+
+    def test_zombie_retroarch_is_not_running(self):
+        self.assertEqual(
+            parse_process_list(IDLE + " 1429 retroarch <defunct>\\n")[0],
+            "STOPPED",
+        )
+
+    def test_unexpected_suffix_remains_unknown(self):
+        self.assertEqual(
+            parse_process_list(IDLE + " 1429 uname <unexpected>\\n")[0],
+            "UNKNOWN",
+        )
+
     def test_empty_response_is_unknown(self):
         self.assertEqual(parse_process_list("")[0], "UNKNOWN")
 
