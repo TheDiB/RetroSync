@@ -24,7 +24,13 @@ def classify_save(filename):
 
 def _hash_file(path, before):
     h = hashlib.sha256()
-    with path.open("rb") as stream:
+    flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags)
+    with os.fdopen(fd, "rb") as stream:
+        opened = os.fstat(stream.fileno())
+        if (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns) != (
+                before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns):
+            raise RuntimeError("File changed before hashing")
         while True:
             block = stream.read(1024 * 1024)
             if not block:
