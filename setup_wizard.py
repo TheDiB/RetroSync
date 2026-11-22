@@ -137,7 +137,13 @@ def run_platform_preview(config, *, verify_mount, ask=input, say=print):
     local_core = ask("Local core [unknown]: ").strip() or "unknown"
     remote_emulator = ask("Remote emulator [retroarch]: ").strip() or "retroarch"
     remote_core = ask("Remote core [unknown]: ").strip() or "unknown"
-    root = Path(nas["mount"]) / nas["remote_root"]
+    remote_root = nas["remote_root"]
+    if (not isinstance(remote_root, str) or not remote_root
+            or PurePosixPath(remote_root).is_absolute()
+            or PureWindowsPath(remote_root).is_absolute()
+            or any(part in (".", "..", "") for part in remote_root.replace("\\\\", "/").split("/"))):
+        raise ValueError("Invalid NAS remote_root")
+    root = Path(nas["mount"]) / remote_root
     mapping = {
         "id": platform_id,
         "local": {"emulator": local_emulator, "core": local_core, "save_dir": str(local_dir)},
