@@ -97,3 +97,11 @@ Run `python -m unittest discover -s tests -v` to exercise it exclusively with di
 `recovery.py` is **fixture-only** and disconnected from the CLI. Given an explicit backup path and its *trusted* expected SHA-256, `inspect_fixture` reports whether the backup is missing, corrupt, or verified; optionally it compares the current destination with a trusted expected SHA-256. `export_backup_fixture` copies a verified backup to a **new, exclusively created path** for manual review; it never overwrites the destination and never restores automatically.
 
 Tests use disposable local files only: `python -m unittest discover -s tests -v`. No automatic discovery of orphan staging files, no journal, no lock/coordination with Batocera, no atomic recovery transaction, and no guarantee against concurrent writers or power loss. A recovery candidate must be reviewed manually; never run this experimental code against real save files or the NAS.
+
+## Batocera SSH activity detector (experimental PR #7)
+
+`remote_activity.py` adds `detect_batocera_retroarch(host)` to inspect Batocera's `ps -eo pid=,comm=` output over SSH, using the observed Batocera 44 process names. It returns `RUNNING`, `STOPPED`, or `UNKNOWN`. SSH errors, timeouts, invalid input, and unexpected output fail closed as `UNKNOWN`. It uses SSH batch mode, strict host-key checking, and no passwords in configuration. The detector is **not connected to the CLI or write engine**.
+
+For an eventual manual check, configure SSH key authentication and verify Batocera's host key out of band first. The unit tests mock SSH and **never connect to Batocera**. Run `python -m unittest discover -s tests -v`.
+
+**Limitations:** Only the RetroArch executable is recognized. Standalone emulators, other clients, and activity beginning after the check are not covered. `STOPPED` is **not authorization to write**. No changes to the NAS or real SRAM files are made.
