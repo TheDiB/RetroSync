@@ -13,7 +13,7 @@ Read-only prototype for inspecting and planning RetroArch SRAM synchronization b
 | v0.5–v0.6 | Experimental **fixture-only** safe-copy and recovery audit (not connected to CLI) |
 | v0.7 | Standalone Batocera SSH RetroArch detector |
 | v0.8 | Optional remote activity check in `--check`, plus documentation cleanup |
-| v0.9 (in progress) | Interactive configuration preview and exclusive file creation |
+| v0.9 (in progress) | Guided configuration, platform inventory, SHA-256 comparison and human-readable report |
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed milestones and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for PR history and future work.
 
@@ -47,7 +47,7 @@ python3 retro_sync.py --config ~/retro-sync-lab/config.json --setup --dry-run
 python3 retro_sync.py --config ~/retro-sync-lab/config.json --setup
 ```
 
-The wizard asks for one game, the existing NAS mount, and an optional Batocera endpoint. Dry run prints JSON without writing. Normal setup prints a preview and requires typing exactly `yes`; it creates only a **new** config file, never replaces one, and never mounts shares, connects over SSH, modifies keys, or writes saves. The parent directory must already exist. The existing config schema remains version 1. This is the first increment, **not** complete SSH enrollment.
+The wizard asks for one game, the existing NAS mount, and an optional Batocera endpoint. Dry run prints JSON without writing. Normal setup prints a preview and accepts `y` or `yes`; it creates only a **new** config file, never replaces one, and never mounts shares, connects over SSH, modifies keys, or writes saves. The parent directory must already exist. The existing config schema remains version 1. This is the first increment, **not** complete SSH enrollment.
 
 ## Usage
 
@@ -63,7 +63,7 @@ python3 retro_sync.py --config config.json --check --color never
 
 The SRAM planner can propose `PUSH` or `PULL` with a trusted baseline, but does not execute either. Missing files are never treated as deletion instructions. Save states are inventoried, not synchronized.
 
-## Experimental platform discovery (not yet in CLI)
+## Experimental platform discovery (API and preview CLI)
 
 `platform_discovery.py` provides a standalone, read-only API for flat directories with `.srm`, `.state`, and `.stateN` files. It records hashes and declared emulator/core identity on both endpoints, but does **not** infer compatibility, scan nested folders, validate a CIFS mount, or authorize copying. The caller must independently verify any NAS mount before invoking it. See `tests/test_platform_discovery.py` and [architecture](docs/architecture.md). Existing schema v1 and `--setup` are unchanged.
 
@@ -100,3 +100,12 @@ This prompts for a platform ID, absolute local save directory, NAS-relative remo
 ### Platform comparison (experimental)
 
 `--platform-preview` now prints a second, read-only JSON report comparing exact relative filenames between the local and NAS inventories. Statuses are `IDENTICAL`, `DIFFERENT`, `LOCAL_ONLY`, and `REMOTE_ONLY`; SHA-256, not modification time, determines equality. SRAM and save states are labelled separately, and save states remain inventory-only. The comparison does **not** infer ROM identity, core compatibility, sync direction, or whether a divergent file is safe to overwrite. No files are copied.
+
+
+### Human-readable diagnostics (v0.9 draft)
+
+The `--platform-preview` command prints a third section after the inventory and comparison JSON: a text report with counts split by SRAM/save state, divergent SRAM filenames, one-sided SRAM, identical SRAM content found under different names on the same endpoint, and core-compatibility warnings. These are **observations only**: matching hashes do not establish game identity or cross-core compatibility. No saves or configuration are modified.
+
+### Future SRAM conflict policy (design only; not implemented)
+
+A future explicit per-platform policy may support `manual` (default), `prefer_local`, or `prefer_remote` for **divergent SRAM**. The preferred endpoint would be authoritative only after verified mount, quiescence, destination backup, integrity rechecks, and safe recovery. One-sided files and deletions require separate rules; save states remain excluded. The v0.9 report never selects a winner or performs writes.
