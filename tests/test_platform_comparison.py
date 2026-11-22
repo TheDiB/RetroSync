@@ -21,7 +21,7 @@ class PlatformComparisonTests(unittest.TestCase):
              item("onlyremote.srm"), item("Wario.state2", "STATE", "b", 2)]))
         self.assertEqual(result["counts"], {
             "IDENTICAL": 1, "DIFFERENT": 2, "LOCAL_ONLY": 1, "REMOTE_ONLY": 1})
-        self.assertEqual(result["files"][-1]["kind"], "STATE")
+        self.assertEqual(next(f for f in result["files"] if f["relative_path"] == "Wario.state2")["kind"], "STATE")
         self.assertFalse(result["sync_decisions"])
 
     def test_different_timestamp_does_not_affect_identity(self):
