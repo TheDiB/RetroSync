@@ -12,7 +12,7 @@ from decision import baseline_hash, decide, load_baseline
 from planner import plan_sram
 from preflight import preflight, check_exit_code
 from terminal_colors import colorize_status, use_color
-from setup_wizard import run_setup
+from setup_wizard import run_setup, run_platform_preview
 
 
 def digest(path):
@@ -64,10 +64,13 @@ def main():
     parser.add_argument('--baseline', type=Path, help='Trusted last-synced SRAM hashes (read only)')
     parser.add_argument('--check', action='store_true', help='Run read-only environment preflight checks')
     parser.add_argument('--setup', action='store_true', help='Guided configuration, never overwrite existing files')
+    parser.add_argument('--platform-preview', action='store_true', help='Guided read-only platform inventory (existing config)')
     parser.add_argument('--dry-run', action='store_true', help='Preview setup without writing')
     parser.add_argument('--color', choices=('auto', 'always', 'never'), default='auto',
                         help='Colorize terminal status labels (default: auto)')
     args = parser.parse_args()
+    if args.platform_preview and args.setup:
+        parser.error('--platform-preview cannot be combined with --setup')
     if args.dry_run and not args.setup:
         parser.error('--dry-run requires --setup')
     if args.setup:
@@ -75,6 +78,8 @@ def main():
     config = json.loads(args.config.read_text(encoding='utf-8'))
     if config.get('schema_version') != 1:
         raise RuntimeError('Unsupported config schema')
+    if args.platform_preview:
+        return run_platform_preview(config, verify_mount=check_mount)
     if args.check:
         checks = preflight(config, check_mount)
         if args.json:
