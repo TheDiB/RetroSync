@@ -12,7 +12,7 @@ RetroSync inventories local and NAS-backed RetroArch saves without modifying the
 
 ## Platform discovery proposal (v0.9)
 
-**Design only, not yet a supported config schema or synchronization mode.** A future read-only discovery stage will scan configured pairs of local and NAS save directories, using bounded, explicit platform mappings instead of one user-entered entry per ROM.
+**Experimental read-only implementation in `platform_discovery.py`; not yet a supported config schema, CLI mode, or synchronization mode.** The experimental read-only discovery function scans configured pairs of local and NAS save directories, using bounded, explicit platform mappings instead of one user-entered entry per ROM. Each endpoint declares `emulator`, `core` (including `unknown`), and `save_dir`; these are declarations, not verified provenance.
 
 Discovery must inventory both categories from the outset:
 
@@ -31,7 +31,7 @@ A state slot is a **filename observation**, not proof of compatibility. Some emu
 3. Keep file category and full relative path; do not collapse different cores, platforms, or slots into the same logical identity.
 4. Do not use modification times or filename matches to resolve divergent content automatically.
 5. Never follow symlinks outside a configured root; treat inaccessible files, path collisions, and ambiguous mappings as uncertainty.
-6. Bound traversal and report failures explicitly; a partial scan must not masquerade as a complete inventory.
+6. Bound traversal and report failures explicitly; a partial scan must not masquerade as a complete inventory. The first implementation scans flat directories only and rejects subdirectories and symlinks; nested traversal is future work.
 7. Preserve the existing schema v1 and SRAM decision engine until a separately tested migration or adapter is designed.
 8. State compatibility must be established independently of matching hashes or slot numbers; no state synchronization until that policy exists.
 
