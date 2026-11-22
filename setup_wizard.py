@@ -80,7 +80,7 @@ def run_setup(target, *, dry_run=False, ask=input, say=print):
     if dry_run:
         say("DRY RUN: nothing written.")
         return 0
-    if ask("Create this new configuration file? [yes/NO]: ").strip().lower() != "yes":
+    if ask("Create this new configuration file? [y/yes/NO]: ").strip().lower() not in ("y", "yes"):
         say("Cancelled: nothing written.")
         return 0
     # Exclusive creation prevents overwriting a file created after the preview.
