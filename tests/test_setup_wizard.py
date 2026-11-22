@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from setup_wizard import run_setup
+from setup_wizard import run_setup, run_platform_preview
 
 
 ANSWERS = [
@@ -77,6 +77,53 @@ class SetupWizardTests(unittest.TestCase):
                 run_setup(target, ask=prompt_from(ANSWERS + ["yes"]),
                           say=lambda _: None)
             self.assertFalse(target.parent.exists())
+
+
+    def test_platform_preview_read_only(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            local = root / "local"
+            remote = root / "Save" / "gbc"
+            local.mkdir()
+            remote.mkdir(parents=True)
+            (local / "Wario.srm").write_bytes(b"local")
+            (remote / "Wario.state2").write_bytes(b"state")
+            config = {"nas": {"mount": str(root), "expected_source": "//nas/Emulation",
+                              "remote_root": "Save"}}
+            calls = []
+            output = []
+            answers = ["gbc", str(local), "gbc", "retroarch", "mgba", "retroarch", "unknown"]
+            self.assertEqual(run_platform_preview(
+                config, verify_mount=lambda *args: calls.append(args),
+                ask=prompt_from(answers), say=output.append), 0)
+            self.assertEqual(len(calls), 1)
+            report = json.loads(output[-2])
+            self.assertTrue(report["complete"])
+            self.assertEqual(report["endpoints"]["local"]["core"], "mgba")
+            self.assertEqual(report["endpoints"]["remote"]["files"][0]["slot"], 2)
+            self.assertEqual((local / "Wario.srm").read_bytes(), b"local")
+            self.assertEqual((remote / "Wario.state2").read_bytes(), b"state")
+
+    def test_platform_preview_mount_failure_stops_before_prompt(self):
+        config = {"nas": {"mount": "/mnt/nas", "expected_source": "//nas/share",
+                          "remote_root": "Save"}}
+        def fail_mount(*args):
+            raise RuntimeError("NAS not mounted")
+        with self.assertRaisesRegex(RuntimeError, "NAS not mounted"):
+            run_platform_preview(config, verify_mount=fail_mount,
+                                 ask=lambda _: self.fail("must not prompt"),
+                                 say=lambda _: None)
+
+    def test_platform_preview_rejects_traversal(self):
+        with tempfile.TemporaryDirectory() as d:
+            config = {"nas": {"mount": d, "expected_source": "//nas/share",
+                              "remote_root": "Save"}}
+            for bad in ("../gbc", "/tmp", "gbc/../other"):
+                with self.subTest(bad=bad):
+                    with self.assertRaises(ValueError):
+                        run_platform_preview(
+                            config, verify_mount=lambda *args: None,
+                            ask=prompt_from(["gbc", d, bad]), say=lambda _: None)
 
 
 if __name__ == "__main__":
