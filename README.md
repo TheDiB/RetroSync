@@ -95,3 +95,8 @@ python3 retro_sync.py --config ~/retro-sync-lab/config.json --platform-preview
 ```
 
 This prompts for a platform ID, absolute local save directory, NAS-relative remote platform directory, and the emulator/core on each side (`unknown` is allowed). The CLI first verifies the configured CIFS mount, then inventories flat directories on both sides, including SRAM and `.stateN` files. It prints JSON and **does not change config or saves**. Core declarations are not compatibility guarantees. Subdirectories and symlinks fail closed. For initial trials, use disposable fixture directories under an already verified NAS mount; no production writes are implemented. `--setup` is unchanged and still configures one game.
+
+
+### Platform comparison (experimental)
+
+`--platform-preview` now prints a second, read-only JSON report comparing exact relative filenames between the local and NAS inventories. Statuses are `IDENTICAL`, `DIFFERENT`, `LOCAL_ONLY`, and `REMOTE_ONLY`; SHA-256, not modification time, determines equality. SRAM and save states are labelled separately, and save states remain inventory-only. The comparison does **not** infer ROM identity, core compatibility, sync direction, or whether a divergent file is safe to overwrite. No files are copied.
