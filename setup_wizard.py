@@ -114,6 +114,7 @@ def run_platform_preview(config, *, verify_mount, ask=input, say=print):
     """
     from platform_discovery import discover_platform
     from platform_comparison import compare_platform
+    from platform_report import render_platform_report
 
     nas = config["nas"]
     verify_mount(Path(nas["mount"]), nas["expected_source"])
@@ -156,5 +157,6 @@ def run_platform_preview(config, *, verify_mount, ask=input, say=print):
     comparison = compare_platform(report)
     say("Platform comparison | exact filenames | READ ONLY")
     say(json.dumps(comparison, indent=2, ensure_ascii=False))
+    say(render_platform_report(report, comparison))
     say("READ ONLY: no configuration or save files modified; compatibility not established.")
     return 0
