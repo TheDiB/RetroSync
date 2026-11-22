@@ -4,7 +4,7 @@ Read-only prototype for inspecting and planning RetroArch SRAM synchronization b
 
 ## Status
 
-**v0.8 development (PR #8) — optional Batocera SSH activity in preflight.** Latest merged milestone: **v0.7** (remote RetroArch detector, tested on Batocera 44 and Steam Deck). All normal CLI operations remain read-only. There is **no production save synchronization or write mode**.
+**v0.9 development — guided, non-destructive configuration.** Latest merged milestone: **v0.8** (Batocera SSH preflight and documentation, tested on Steam Deck and Windows). All normal CLI operations remain read-only. There is **no production save synchronization or write mode**.
 
 | Milestone | Capability |
 | --- | --- |
@@ -12,7 +12,8 @@ Read-only prototype for inspecting and planning RetroArch SRAM synchronization b
 | v0.4 | Preflight checks and terminal status colors |
 | v0.5–v0.6 | Experimental **fixture-only** safe-copy and recovery audit (not connected to CLI) |
 | v0.7 | Standalone Batocera SSH RetroArch detector |
-| v0.8 (in progress) | Optional remote activity check in `--check`, plus documentation cleanup |
+| v0.8 | Optional remote activity check in `--check`, plus documentation cleanup |
+| v0.9 (in progress) | Interactive configuration preview and exclusive file creation |
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed milestones and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for PR history and future work.
 
@@ -36,7 +37,17 @@ The optional `batocera` object enables the read-only SSH process check:
 }
 ```
 
-If omitted, remote activity stays `UNKNOWN` (advisory). Configure and verify SSH separately using [docs/SSH_SETUP.md](docs/SSH_SETUP.md); an automated `--setup` wizard is planned, not implemented.
+If omitted, remote activity stays `UNKNOWN` (advisory). Configure and verify SSH separately using [docs/SSH_SETUP.md](docs/SSH_SETUP.md); the v0.9 `--setup` wizard configures an existing SSH endpoint but does not enroll keys.
+
+## Guided setup (v0.9 preview)
+
+```bash
+mkdir -p ~/retro-sync-lab
+python3 retro_sync.py --config ~/retro-sync-lab/config.json --setup --dry-run
+python3 retro_sync.py --config ~/retro-sync-lab/config.json --setup
+```
+
+The wizard asks for one game, the existing NAS mount, and an optional Batocera endpoint. Dry run prints JSON without writing. Normal setup prints a preview and requires typing exactly `yes`; it creates only a **new** config file, never replaces one, and never mounts shares, connects over SSH, modifies keys, or writes saves. The parent directory must already exist. The existing config schema remains version 1. This is the first increment, **not** complete SSH enrollment.
 
 ## Usage
 
