@@ -84,3 +84,14 @@ See [docs/architecture.md](docs/architecture.md). Future write-enabled synchroni
 RetroSync is created and maintained by [TheDiB](https://github.com/TheDiB), with development assistance from [ChatGPT by OpenAI](https://chatgpt.com) for design discussions, Python implementation, documentation, and tests. All changes are reviewed and validated by the project maintainer.
 
 Licensed under MIT.
+
+
+### Guided platform preview (experimental, v0.9 draft)
+
+With an **existing schema v1 config**, run:
+
+```bash
+python3 retro_sync.py --config ~/retro-sync-lab/config.json --platform-preview
+```
+
+This prompts for a platform ID, absolute local save directory, NAS-relative remote platform directory, and the emulator/core on each side (`unknown` is allowed). The CLI first verifies the configured CIFS mount, then inventories flat directories on both sides, including SRAM and `.stateN` files. It prints JSON and **does not change config or saves**. Core declarations are not compatibility guarantees. Subdirectories and symlinks fail closed. For initial trials, use disposable fixture directories under an already verified NAS mount; no production writes are implemented. `--setup` is unchanged and still configures one game.
