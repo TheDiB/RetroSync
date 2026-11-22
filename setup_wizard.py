@@ -113,6 +113,7 @@ def run_platform_preview(config, *, verify_mount, ask=input, say=print):
     No config file or save is written.
     """
     from platform_discovery import discover_platform
+    from platform_comparison import compare_platform
 
     nas = config["nas"]
     verify_mount(Path(nas["mount"]), nas["expected_source"])
@@ -152,5 +153,8 @@ def run_platform_preview(config, *, verify_mount, ask=input, say=print):
     }
     report = discover_platform(mapping)
     say(json.dumps(report, indent=2, ensure_ascii=False))
+    comparison = compare_platform(report)
+    say("Platform comparison | exact filenames | READ ONLY")
+    say(json.dumps(comparison, indent=2, ensure_ascii=False))
     say("READ ONLY: no configuration or save files modified; compatibility not established.")
     return 0
