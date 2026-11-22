@@ -6,7 +6,7 @@ RetroArch only, not every emulator or concurrent NAS writer.
 import re
 import subprocess
 
-_PID_LINE = re.compile(r"^\s*([0-9]+)\s+(\S+)\s*$")
+_PID_LINE = re.compile(r"^\s*([0-9]+)\s+(\S+)(\s+<defunct>)?\s*$")
 _REMOTE_COMMAND = "ps -eo pid=,comm="
 
 
@@ -23,7 +23,7 @@ def parse_process_list(output):
         if not match:
             return "UNKNOWN", "Unrecognized remote process listing"
         seen += 1
-        if match.group(2).lower() in ("retroarch", "retroarch.exe"):
+        if match.group(3) is None and match.group(2).lower() in ("retroarch", "retroarch.exe"):
             pids.append(match.group(1))
     if not seen:
         return "UNKNOWN", "No process records"
