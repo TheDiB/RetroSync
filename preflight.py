@@ -1,11 +1,13 @@
 """Read-only environment checks. A PASS is not permission to write saves.
 
-RetroArch process detection is local only. Batocera and other NAS clients
-remain unobservable without a separate coordination mechanism.
+Remote Batocera RetroArch detection is optional and advisory. A process
+snapshot cannot guarantee that no other NAS client is writing saves.
 """
 import os
 import sys
 from pathlib import Path
+
+from remote_activity import detect_batocera_retroarch
 
 
 def detect_retroarch(proc_root=Path("/proc"), platform=None):
@@ -41,7 +43,8 @@ def detect_retroarch(proc_root=Path("/proc"), platform=None):
     return "STOPPED", "No local RetroArch process detected"
 
 
-def preflight(config, check_mount_fn, proc_root=Path("/proc"), platform=None):
+def preflight(config, check_mount_fn, proc_root=Path("/proc"), platform=None,
+              remote_detector=None):
     """Collect checks without changing files or mounts."""
     checks = []
 
@@ -66,6 +69,14 @@ def preflight(config, check_mount_fn, proc_root=Path("/proc"), platform=None):
     except (KeyError, TypeError, ValueError) as exc:
         add("config", "FAIL", f"Invalid configuration: {exc}")
         return checks
+    batocera = config.get("batocera")
+    if batocera is not None:
+        if not isinstance(batocera, dict) or not isinstance(batocera.get("host"), str) or not batocera["host"]:
+            add("config", "FAIL", "Invalid Batocera SSH configuration: host is required")
+            return checks
+        if not isinstance(batocera.get("user", "root"), str) or not batocera.get("user", "root"):
+            add("config", "FAIL", "Invalid Batocera SSH configuration: user must be a string")
+            return checks
     add("config", "PASS", f"{len(games)} game(s) configured")
     try:
         check_mount_fn(mount, source)
@@ -87,8 +98,21 @@ def preflight(config, check_mount_fn, proc_root=Path("/proc"), platform=None):
     status, detail = detect_retroarch(proc_root, platform)
     add("retroarch_local", {"RUNNING": "FAIL", "STOPPED": "PASS",
                              "UNKNOWN": "UNKNOWN"}[status], detail)
-    add("remote_emulator_activity", "UNKNOWN",
-        "Other NAS clients (including Batocera) cannot be checked locally")
+    if batocera is None:
+        add("remote_emulator_activity", "UNKNOWN",
+            "Batocera SSH is not configured; other NAS clients cannot be checked")
+    else:
+        detector = detect_batocera_retroarch if remote_detector is None else remote_detector
+        try:
+            remote_status, remote_detail = detector(batocera["host"], user=batocera.get("user", "root"))
+        except Exception as exc:
+            # Fail closed even if an injected detector unexpectedly fails.
+            remote_status, remote_detail = "UNKNOWN", f"Remote inspection error: {type(exc).__name__}"
+        if remote_status not in ("RUNNING", "STOPPED", "UNKNOWN"):
+            remote_status, remote_detail = "UNKNOWN", "Invalid remote inspection status"
+        add("remote_emulator_activity",
+            {"RUNNING": "FAIL", "STOPPED": "PASS", "UNKNOWN": "UNKNOWN"}[remote_status],
+            f"{remote_detail} (RetroArch only; snapshot, not write authorization)")
     return checks
 
 
