@@ -2,7 +2,7 @@
 
 RetroSync uses incremental development milestones; these are **not necessarily packaged releases**. A milestone listed as a release candidate is not yet merged.
 
-## v0.9 — release candidate (PR #9; not yet merged)
+## v0.9 — merged (PR #9, 2026-11-23)
 
 - Add `--setup` guided configuration with `--dry-run`, explicit `y`/`yes` confirmation, restrictive permissions and exclusive creation of a **new** schema-v1 config file.
 - Preserve existing configuration files; do not mount shares, enroll SSH keys, or modify save files.
