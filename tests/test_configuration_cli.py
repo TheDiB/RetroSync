@@ -54,7 +54,7 @@ class ConfigurationCliTests(unittest.TestCase):
             with self.subTest(args=args):
                 result = self.run_cli(sample(), *args)
                 self.assertEqual(result.returncode, 2)
-                self.assertIn("supports --validate-config only", result.stderr)
+                self.assertIn("supports --validate-config and --scan only", result.stderr)
 
     def test_conflicting_modes_refused(self):
         result = self.run_cli(sample(), "--validate-config", "--setup")
