@@ -6,6 +6,27 @@ from platform_comparison import compare_platform
 from platform_report import render_platform_report
 
 
+def _resolve_endpoint(path, side):
+    if not path.is_absolute():
+        raise ValueError(f"Endpoint is not absolute on this host: {path}")
+    if path.is_symlink() or (side == "remote" and any(p.is_symlink() for p in path.parents)):
+        raise ValueError(f"Symlinked endpoint: {path}")
+    try:
+        resolved = path.resolve(strict=True)
+    except RuntimeError as exc:
+        raise ValueError(f"Cannot resolve endpoint: {path}") from exc
+    if not resolved.is_dir():
+        raise ValueError(f"Endpoint is not a directory: {path}")
+    st = resolved.stat()
+    return resolved, (st.st_dev, st.st_ino)
+
+
+def _verify_endpoints(snapshots):
+    for side, path, resolved, identity in snapshots:
+        if _resolve_endpoint(path, side) != (resolved, identity):
+            raise RuntimeError(f"Endpoint changed during scan: {path}")
+
+
 def scan_configured(config, verify_mount, platform_id=None):
     report = configuration_report(config)
     if report["schema_version"] != 2:
@@ -21,38 +42,39 @@ def scan_configured(config, verify_mount, platform_id=None):
     root = mount / nas["remote_root"]
     mappings = []
     seen = []
+    snapshots = []
     for platform in platforms:
         mapping = {"id": platform["id"], "local": dict(platform["local"]),
                    "remote": dict(platform["remote"])}
         mapping["remote"]["save_dir"] = str(root / platform["remote"]["save_dir"])
+        paths = {}
         for side in ("local", "remote"):
             path = Path(mapping[side]["save_dir"])
-            if not path.is_absolute():
-                raise ValueError(f"Endpoint is not absolute on this host: {path}")
-            # Reject symlink components and physical aliases before inventory.
-            if any(p.is_symlink() for p in (path, *path.parents)):
-                raise ValueError(f"Symlinked endpoint: {path}")
-            resolved = path.resolve(strict=True)
-            if not resolved.is_dir():
-                raise ValueError(f"Endpoint is not a directory: {path}")
+            resolved, identity = _resolve_endpoint(path, side)
+            snapshots.append((side, path, resolved, identity))
+            paths[side] = {"configured_path": str(path), "resolved_path": str(resolved),
+                           "symlink_resolved": any(p.is_symlink() for p in path.parents)}
+            mapping[side]["save_dir"] = str(resolved)
             for previous in seen:
                 if (resolved == previous or resolved in previous.parents
                         or previous in resolved.parents or resolved.samefile(previous)):
                     raise ValueError(f"Overlapping endpoint directories: {path} and {previous}")
             seen.append(resolved)
-        mappings.append((platform, mapping))
+        mappings.append((platform, mapping, paths))
     output = {"schema_version": 2, "device_id": config["device_id"],
               "complete": True, "read_only": True, "sync_decisions": False,
               "platforms": []}
-    for platform, mapping in mappings:
+    for platform, mapping, paths in mappings:
         if platform_id is not None and platform["id"] != platform_id:
             continue
         verify_mount(mount, nas["expected_source"])
+        _verify_endpoints(snapshots)
         inventory = discover_platform(mapping)
         comparison = compare_platform(inventory)
         verify_mount(mount, nas["expected_source"])
+        _verify_endpoints(snapshots)
         output["platforms"].append({
-            "id": platform["id"], "attribution_verified": False,
+            "id": platform["id"], "attribution_verified": False, "paths": paths,
             "policy": resolve_policy(config.get("policy"), platform.get("policy")),
             "inventory": inventory, "comparison": comparison})
     return output
@@ -64,5 +86,8 @@ def render_scan(report):
     for item in report["platforms"]:
         lines.extend(["", render_platform_report(item["inventory"], item["comparison"]),
                       "WARNING: Platform attribution not verified; inventory only."])
+        for side, paths in item["paths"].items():
+            if paths["symlink_resolved"]:
+                lines.append(f"  {side} alias: {paths['configured_path']} -> {paths['resolved_path']}")
     lines.append("No configuration, baseline or save files modified.")
     return "\n".join(lines)
