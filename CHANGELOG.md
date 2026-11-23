@@ -2,6 +2,16 @@
 
 RetroSync uses incremental development milestones; these are **not necessarily packaged releases**. A milestone listed as a release candidate is not yet merged.
 
+## v0.10 — validated release candidate (PR #10, pending merge)
+
+- Add schema-v2 platform mappings and inherited conflict/missing-file policies, preserving schema-v1 workflows.
+- Add offline configuration validation, bounded non-interactive scan and global read-only SRAM plan, with optional platform selection and JSON output.
+- Validate per-device, per-platform historical hashes and UTC timestamps; reject invalid or explicitly missing history.
+- Resolve local parent aliases, reject overlapping endpoints and remote symlinks, recheck mount and endpoint identity.
+- Separate classification from conflict and missing-file proposals; never propagate deletion or authorize writes.
+- Add standalone HTML simulator and 576 shared reference cases.
+- Validation at `567cf41`: SteamOS 186 passed; Windows 178 passed, 8 symlink privilege skips; browser 576/576 offline and HTTP. Live GBC plans with and without synthetic history covered 9 SRAM and excluded 40 states.
+
 ## v0.9 — merged (PR #9, 2026-11-23)
 
 - Add `--setup` guided configuration with `--dry-run`, explicit `y`/`yes` confirmation, restrictive permissions and exclusive creation of a **new** schema-v1 config file.
@@ -51,4 +61,4 @@ RetroSync uses incremental development milestones; these are **not necessarily p
 
 ## Limitations
 
-No production write mode, multi-writer lock protocol, automatic SRAM priority policy, cross-client coordination or save-state reconciliation is implemented.
+No production write mode, multi-writer lock protocol, automatic execution of SRAM priority policies, cross-client coordination or save-state reconciliation is implemented.

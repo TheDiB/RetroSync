@@ -14,6 +14,8 @@
 | [#8](https://github.com/TheDiB/RetroSync/pull/8) | v0.8 | Remote preflight and documentation |
 | [#9](https://github.com/TheDiB/RetroSync/pull/9) | v0.9 (merged) | Guided setup, platform discovery, comparison and human report |
 
+| [#10](https://github.com/TheDiB/RetroSync/pull/10) | v0.10 (validated candidate) | Platform configuration, history, policy planning and simulator |
+
 ## v0.9 validation
 
 - **Confirmed:** 112 tests passed on Steam Deck before the final human-report changes.
@@ -32,12 +34,19 @@
 - Experimental copy/recovery modules are restricted to disposable fixtures; never use on production saves.
 - Other emulators, NAS clients, time-of-check/time-of-use races, locking and crash consistency remain open problems.
 
-## v0.10 candidates (design discussion, not commitments)
+## v0.10 validation and closure
 
-1. **SRAM authority policy:** explicit per-platform `manual` (default), `prefer_local`, or `prefer_remote` for divergent files, with optional per-game overrides. Policy selection must not itself enable writes.
-2. **Historical baseline:** distinguish a genuine two-sided conflict from an unchanged or missing file; never interpret one-sided presence as deletion without explicit history/policy.
-3. **Safe-write prerequisites:** verified mount, all relevant writers quiescent, destination backup, integrity rechecks, atomicity/durability considerations and recovery.
-4. **Discovery evolution:** persist platform mappings safely, support multiple platforms and eventually nested layouts with explicit adapters; assess core/state compatibility separately.
-5. **SSH onboarding:** optional guided host-key verification and key enrollment without overwriting existing keys; never silently trust a host.
+All eight development stages have been implemented: schema v2, CLI integration, non-interactive discovery, platform baselines, policies, global plan, HTML simulator and final validation/documentation.
 
-Do not enable production synchronization until its safety model and tests are complete. Keep the README status and CHANGELOG aligned with the latest merged milestone.
+- Tested code: `567cf41`.
+- Windows: 186 tests collected, 178 passed, 8 skipped for symlink privileges.
+- SteamOS: 186 passed, no skips.
+- Browser: 576/576 shared reference cases passed both offline and via HTTP.
+- Live GBC: 9 SRAM, 40 states excluded; no-history and synthetic-history plans, all three conflict and missing-file policies, invalid baseline/platform and incompatible CLI modes checked.
+- Synthetic history is test data only, not evidence of real synchronization.
+- PR #10 remains pending maintainer merge and release tagging.
+
+## Future work
+
+Verify platform attribution, save compatibility and baseline provenance; design safe creation/overwrite, writer coordination, backup, recovery and durability before production writes. Nested layouts and SSH onboarding remain future work. Publish the simulator through GitHub Pages after merge if enabled.
+

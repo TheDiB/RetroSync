@@ -1,8 +1,10 @@
+import hashlib
+import os
 import tempfile
 import unittest
 from pathlib import Path
 
-from platform_discovery import classify_save, discover_platform, scan_directory
+from platform_discovery import _hash_file, classify_save, discover_platform, scan_directory
 
 
 class ClassificationTests(unittest.TestCase):
@@ -39,6 +41,22 @@ class DiscoveryTests(unittest.TestCase):
             self.assertNotEqual(result["endpoints"]["local"]["files"][0]["sha256"],
                                 result["endpoints"]["remote"]["files"][1]["sha256"])
 
+    def test_hash_matches_fresh_path_stat(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "save.srm"
+            path.write_bytes(b"progress")
+            self.assertEqual(_hash_file(path, os.stat(path, follow_symlinks=False)),
+                             hashlib.sha256(b"progress").hexdigest())
+
+    def test_changed_file_before_hashing_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "save.srm"
+            path.write_bytes(b"old")
+            before = os.stat(path, follow_symlinks=False)
+            path.write_bytes(b"new progress")
+            with self.assertRaisesRegex(RuntimeError, "changed before hashing"):
+                _hash_file(path, before)
+
     def test_large_flat_library(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -59,7 +77,12 @@ class DiscoveryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
             (root / "save.srm").write_bytes(b"safe")
-            (root / "alias.srm").symlink_to(root / "save.srm")
+            try:
+                (root / "alias.srm").symlink_to(root / "save.srm")
+            except OSError as exc:
+                if getattr(exc, "winerror", None) == 1314:
+                    self.skipTest(f"Symlink privilege unavailable: {exc}")
+                raise
             with self.assertRaisesRegex(RuntimeError, "Symlink"):
                 scan_directory(root)
 

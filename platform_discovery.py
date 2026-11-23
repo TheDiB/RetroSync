@@ -70,12 +70,14 @@ def scan_directory(root, *, max_entries=10000, max_bytes=1024 * 1024 * 1024):
             kind = classify_save(entry.name)
             if kind is None:
                 continue
-            before = entry.stat(follow_symlinks=False)
+            # Windows DirEntry.stat may omit device and inode identifiers.
+            # Obtain fresh path metadata comparable to os.fstat on all hosts.
+            path = root / entry.name
+            before = os.stat(path, follow_symlinks=False)
             if not stat.S_ISREG(before.st_mode):
                 raise RuntimeError(f"Not a regular file: {entry.name}")
             if before.st_size > max_bytes:
                 raise RuntimeError(f"File size limit exceeded: {entry.name}")
-            path = root / entry.name
             digest = _hash_file(path, before)
             files.append({"name": entry.name, "relative_path": entry.name,
                           "kind": kind[0], "slot": kind[1],

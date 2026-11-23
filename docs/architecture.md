@@ -1,4 +1,4 @@
-# RetroSync architecture (v0.9)
+# RetroSync architecture (v0.10 candidate)
 
 RetroSync currently inventories and compares local and NAS-backed RetroArch saves **without changing save files**.
 
@@ -17,7 +17,7 @@ The first implementation scans **flat directories only**, rejecting subdirectori
 
 | Category | Recognized examples | Observations | Synchronization |
 | --- | --- | --- | --- |
-| SRAM | `.srm` | Exact filename, size, mtime, SHA-256 | Read-only comparison; existing per-game planner is separate |
+| SRAM | `.srm` | Exact filename, size, mtime, SHA-256 | Read-only comparison and v2 proposals; legacy per-game planner remains separate |
 | Save states | `.state`, `.state1`, `.state2` | Exact filename, slot suffix, size, mtime, SHA-256 | **Inventory only; no automatic synchronization** |
 | Other files | Metadata, screenshots, unknown extensions | Ignored by the current flat scan | Never implicitly synchronized |
 
@@ -39,11 +39,23 @@ A save-state slot is a **filename observation**, not proof of compatibility. Equ
 6. Reject subdirectories and symlinks in the initial flat scan; bound traversal and fail closed rather than presenting partial results as complete.
 7. Preserve schema v1 and the existing per-game SRAM decision/planner until a separately tested migration is designed.
 8. Do not synchronize save states without independently established format/core compatibility.
-9. Do not let a future `prefer_local` or `prefer_remote` setting bypass backups, activity checks, integrity rechecks or recovery.
+9. Do not let a `prefer_local` or `prefer_remote` setting bypass backups, activity checks, integrity rechecks or recovery.
 
-## Future conflict policy (not implemented in v0.9)
+## Schema-v2 planning pipeline
 
-Potential opt-in SRAM authority policies: `manual` (default), `prefer_local`, `prefer_remote`. These apply to **divergent SRAM**, not implicitly to one-sided files, deletions or save states. A policy preference is not a write authorization.
+`retro_sync.py --plan` calls `platform_plan.build_plan`, which loads optional history through `platform_baseline.py`, obtains a complete scan through `platform_scan.py`, and applies `platform_policy.py` to each platform. The policy layer uses the existing pure hash classifier in `decision.py`. Reports are rendered as text or JSON, never executed.
+
+Configuration validation is offline. Scan checks all configured endpoint mappings for overlap, resolves permitted local parent aliases, rejects remote symlinks and symlinked endpoints, and rechecks mount and endpoint identity around discovery. File hashing checks metadata before and after reading. These checks do not provide a transactional snapshot or eliminate races.
+
+History is scoped to device, platform and exact SRAM filename. The plan includes the union of discovered SRAM and tracked filenames, including tracked files missing on both sides. History validation is structural, not proof of provenance. No baseline is updated.
+
+## Conflict and missing-file policies
+
+Implemented SRAM conflict policies: `manual` (default), `prefer_local`, `prefer_remote`. These apply to **conflicts**, not to unilateral changes established by the supplied history. Missing-file policies are independent: block, create_new (no recorded history; otherwise confirm restoration), restore (propose restoration of tracked missing files). Both missing is blocked. No deletion is proposed. A policy preference is not a write authorization.
+
+## Simulator and validation
+
+The standalone HTML simulator uses the same 576 reference cases as Python tests; it accesses no real saves. At commit `567cf41`, 186 Python tests passed on SteamOS and 178 on Windows (8 symlink privilege skips). All 576 browser cases passed offline and via HTTP. Live v2 GBC plans covered 9 SRAM and excluded 40 states, including synthetic-history and policy variations.
 
 ## Validation and limitations
 
