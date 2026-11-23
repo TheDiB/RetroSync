@@ -18,7 +18,7 @@
 
 - **Confirmed:** 112 tests passed on Steam Deck before the final human-report changes.
 - **Confirmed:** live GBC inventory/comparison and human-readable report ran successfully on Steam Deck against a mounted NAS (49 files).
-- **Pending:** run the complete **118-test** suite on the final branch and perform the final CLI smoke test.
+- **Confirmed:** complete **118-test** suite passed on Steam Deck on 2026-11-23 (commit `0e0ea54`, 0.053 s).
 - **Pending:** maintainer approval and PR #9 merge. Do not label the milestone merged before that happens.
 
 ## Safety decisions
