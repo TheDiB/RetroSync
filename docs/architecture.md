@@ -1,4 +1,4 @@
-# RetroSync architecture (v0.9 release candidate)
+# RetroSync architecture (v0.9)
 
 RetroSync currently inventories and compares local and NAS-backed RetroArch saves **without changing save files**.
 
