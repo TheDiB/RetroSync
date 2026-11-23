@@ -8,6 +8,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from configuration import load_config, configuration_report
 from decision import baseline_hash, decide, load_baseline
 from planner import plan_sram
 from preflight import preflight, check_exit_code
@@ -62,6 +63,7 @@ def main():
     parser.add_argument('--config', type=Path, default=Path(__file__).with_name('config.json'))
     parser.add_argument('--json', action='store_true', help='Print machine-readable JSON')
     parser.add_argument('--baseline', type=Path, help='Trusted last-synced SRAM hashes (read only)')
+    parser.add_argument('--validate-config', action='store_true', help='Validate configuration offline')
     parser.add_argument('--check', action='store_true', help='Run read-only environment preflight checks')
     parser.add_argument('--setup', action='store_true', help='Guided configuration, never overwrite existing files')
     parser.add_argument('--platform-preview', action='store_true', help='Guided read-only platform inventory (existing config)')
@@ -69,15 +71,38 @@ def main():
     parser.add_argument('--color', choices=('auto', 'always', 'never'), default='auto',
                         help='Colorize terminal status labels (default: auto)')
     args = parser.parse_args()
+    if args.validate_config and (args.setup or args.platform_preview or args.check or args.baseline or args.dry_run):
+        parser.error('--validate-config must be used independently (optionally with --json)')
     if args.platform_preview and args.setup:
         parser.error('--platform-preview cannot be combined with --setup')
     if args.dry_run and not args.setup:
         parser.error('--dry-run requires --setup')
     if args.setup:
         return run_setup(args.config, dry_run=args.dry_run)
-    config = json.loads(args.config.read_text(encoding='utf-8'))
-    if config.get('schema_version') != 1:
-        raise RuntimeError('Unsupported config schema')
+    config = load_config(args.config)
+    if args.validate_config:
+        report = configuration_report(config)
+        if args.json:
+            print(json.dumps(report, indent=2, ensure_ascii=False))
+        else:
+            print("RetroSync v0.10 | CONFIGURATION | READ ONLY")
+            print(f"Schema version : {report['schema_version']}")
+            print(f"Device ID      : {report['device_id']}")
+            if report["schema_version"] == 2:
+                print(f"Platforms      : {len(report['platforms'])}")
+                print()
+                print(f"{'PLATFORM':<16} {'LOCAL CORE':<16} {'REMOTE CORE':<16} {'SRAM POLICY':<16} MISSING POLICY")
+                for platform in report["platforms"]:
+                    policy = platform["policy"]
+                    print(f"{platform['id']:<16} {platform['local_core']:<16} {platform['remote_core']:<16} {policy['sram']:<16} {policy['missing']}")
+            for warning in report["warnings"]:
+                print(f"WARNING: {warning}")
+            print(f"Configuration: {report['status']}")
+            print("No filesystem scan performed.")
+            print("No configuration or save files modified.")
+        return 0
+    if config['schema_version'] == 2:
+        raise RuntimeError('Schema v2 currently supports --validate-config only')
     if args.platform_preview:
         return run_platform_preview(config, verify_mount=check_mount)
     if args.check:
