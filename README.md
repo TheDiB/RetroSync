@@ -4,7 +4,7 @@ RetroSync is a Python prototype for **read-only** inspection, comparison, and pl
 
 ## Status
 
-**v0.9 — validated release candidate (PR #9, pending merge).** Latest merged milestone before this PR: **v0.8**.
+**v0.9 — latest merged milestone (PR #9).** Validated on Steam Deck and merged on 2026-11-23.
 
 The v0.9 platform preview has been exercised on a Steam Deck against a real NAS share (49 GBC files, two JSON reports and a human-readable report). The complete **118-test suite passed on Steam Deck** on 2026-11-23 (commit `0e0ea54`). These milestones are not necessarily packaged releases.
 
