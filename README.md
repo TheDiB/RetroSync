@@ -4,9 +4,9 @@ RetroSync is a Python prototype for **read-only** inspection, comparison, and pl
 
 ## Status
 
-**v0.9 — latest merged milestone (PR #9).** Validated on Steam Deck and merged on 2026-11-23.
+**v0.10 — validated release candidate (PR #10, pending merge).** Latest merged milestone: v0.9.
 
-The v0.9 platform preview has been exercised on a Steam Deck against a real NAS share (49 GBC files, two JSON reports and a human-readable report). The complete **118-test suite passed on Steam Deck** on 2026-11-23 (commit `0e0ea54`). These milestones are not necessarily packaged releases.
+The v0.10 candidate passed 186 tests on SteamOS and 178 on Windows (8 symlink privilege skips), at commit `567cf41`. The HTML simulator passed all 576 shared reference scenarios offline and over HTTP. Live GBC planning was validated with and without synthetic history.
 
 **No production save synchronization exists.** Normal inspection and planning commands never copy, overwrite, rename or delete saves. The only normal CLI file creation is an explicitly confirmed **new configuration file** via `--setup`. Experimental fixture-only copy/recovery modules are not wired to the CLI.
 
@@ -17,7 +17,8 @@ The v0.9 platform preview has been exercised on a Steam Deck against a real NAS 
 | v0.5–v0.6 | Isolated **fixture-only** copy and recovery experiments |
 | v0.7 | Standalone Batocera RetroArch activity detector via SSH |
 | v0.8 | Optional Batocera SSH activity check in `--check` |
-| **v0.9 (PR #9)** | Guided setup, platform inventory, comparison and human report |
+| v0.9 (PR #9) | Guided setup, platform inventory, comparison and human report |
+| **v0.10 (PR #10)** | Schema v2, non-interactive scan, platform history, SRAM policy proposals and HTML simulator |
 
 See [CHANGELOG.md](CHANGELOG.md) for milestone details, [development history](docs/DEVELOPMENT.md) for PRs and roadmap, and [architecture](docs/architecture.md) for safety boundaries.
 
@@ -32,7 +33,7 @@ See [CHANGELOG.md](CHANGELOG.md) for milestone details, [development history](do
 
 Use `config.example.json` as a starting point or the `--setup` wizard. Keep the real `config.json` private: **never commit personal configuration or SSH private keys**.
 
-Schema version **1** remains in use and explicitly lists games for the existing per-game planner. The new platform preview does **not** persist platform mappings or automatically add games to the configuration.
+Schema version **1** remains supported for the existing per-game planner, setup and preview. Schema **2** explicitly maps platforms for non-interactive scanning and planning; it does not automatically infer game or platform identity.
 
 An optional Batocera SSH endpoint can be declared:
 
@@ -44,6 +45,45 @@ An optional Batocera SSH endpoint can be declared:
 ```
 
 This enables read-only RetroArch activity detection in `--check`. It does **not** set up SSH trust or install keys; see [manual SSH setup](docs/SSH_SETUP.md).
+
+## Platform configuration and planning (v0.10)
+
+Example schema-v2 configuration (replace paths and share with your own):
+
+```json
+{
+  "schema_version": 2,
+  "device_id": "my-device",
+  "nas": {"mount": "/mnt/nas", "expected_source": "//nas/Emulation", "remote_root": "Save"},
+  "policy": {"sram": "manual", "missing": "create_new"},
+  "platforms": [{
+    "id": "gbc",
+    "local": {"emulator": "retroarch", "core": "mgba", "save_dir": "/home/user/saves/gbc"},
+    "remote": {"emulator": "retroarch", "core": "unknown", "save_dir": "gbc"}
+  }]
+}
+```
+
+Save privately as `config-v2.json`. The v2 CLI supports only these three modes:
+
+```bash
+python3 retro_sync.py --config config-v2.json --validate-config
+python3 retro_sync.py --config config-v2.json --scan --platform gbc
+python3 retro_sync.py --config config-v2.json --plan
+python3 retro_sync.py --config config-v2.json --plan --baseline baseline-v2.json --json
+```
+
+Omit `--platform` to include all configured platforms. Validation is offline; scan and plan require the verified CIFS mount. All configured endpoint directories are checked for overlap even when selecting one platform. Local parent aliases may resolve to physical directories; remote symlinks and symlinked endpoint directories are refused. Use separate flat directories per platform.
+
+Policies inherit defaults, then global settings, then optional per-platform overrides. `sram`: `manual` (default), `prefer_local`, `prefer_remote` apply only to conflicts. `missing`: `block`, `create_new` (default), `restore`. With no recorded history, creation may be proposed; a previously tracked missing file requires confirmation under `create_new`, or a restoration proposal under `restore`. Both missing is blocked. No deletion is proposed.
+
+An optional v2 baseline contains `schema_version: 2`, the matching `device_id`, and a `platforms` object keyed by platform ID, each containing a `files` object keyed by exact SRAM filename. Each entry contains a 64-digit hexadecimal `last_synced_sha256` and UTC `last_synced_at` ending in Z. Explicit missing or invalid baseline files fail; omitting the option means no history. RetroSync does not create or update this history, and structural validation does not establish provenance.
+
+All actions are proposals only. Save states are excluded from plans; attribution, compatibility and baseline provenance remain unverified. No write is authorized.
+
+### SRAM simulator
+
+Open [docs/simulator.html](docs/simulator.html) locally in a browser, or serve the docs directory with `python3 -m http.server 8080 --directory docs` and open `http://localhost:8080/simulator.html`. Run reference checks using the adjacent `simulator-scenarios.json` (select manually in offline mode). The same 576 cases are checked by Python tests. No real saves are accessed by the simulator.
 
 ## Guided setup (v0.9)
 
@@ -97,13 +137,13 @@ The original per-game SRAM planner can propose `PUSH` or `PULL` when a trusted b
 python3 -m unittest discover -s tests -v
 ```
 
-The unit suite uses disposable fixtures and does not require live NAS or SSH access. **112 tests were confirmed passing** on Steam Deck before the final v0.9 report additions. The complete **118-test suite passed** on Steam Deck on 2026-11-23 (commit `0e0ea54`, 0.053 s). The human-readable report was exercised successfully against the live GBC inventory.
+The unit suite uses disposable fixtures and does not require live NAS or SSH access. At `567cf41`, 186 tests passed on SteamOS; Windows passed 178 with 8 symlink privilege skips. Live GBC plans covered 9 SRAM files and excluded 40 save states.
 
 ## Safety and next steps
 
 All normal save operations remain read-only. `safe_copy.py` and `recovery.py` are **isolated fixture-only experiments**, not production tools. Do not run them against real saves.
 
-Future SRAM conflict handling may offer an **opt-in** per-platform policy: `manual` (default), `prefer_local`, or `prefer_remote`. **Not implemented in v0.9.** One-sided files/deletions require separate rules, and save states remain excluded. Any future write mode needs reliable backups, quiescence and multi-writer coordination, hash rechecks, crash recovery and SMB-aware durability.
+SRAM conflict and missing-file policies are implemented as read-only proposals in v0.10. Any future write mode needs verified attribution and compatibility, trustworthy history, reliable backups, quiescence and multi-writer coordination, hash rechecks, crash recovery and SMB-aware durability.
 
 ## Credits and license
 
