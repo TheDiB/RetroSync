@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RetroSync | SRAM simulator</title>
+<style>
+:root{color-scheme:light dark;font:16px/1.5 system-ui,sans-serif;--accent:#648ce0}
+*{box-sizing:border-box}body{max-width:960px;margin:auto;padding:24px}
+h1{font-size:clamp(1.8rem,5vw,2.8rem);margin-bottom:0}h2{font-size:1.2rem}
+.muted{opacity:.78}.panel{border:1px solid #8887;border-radius:14px;padding:20px;margin:20px 0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px}
+label{display:block;font-weight:600}select,button,input{font:inherit}select{display:block;width:100%;padding:10px;margin-top:6px;border-radius:8px}
+button{padding:9px 14px;border:1px solid #8889;border-radius:8px;cursor:pointer;margin:4px 4px 4px 0}
+button:hover{border-color:var(--accent)}button:focus-visible,select:focus-visible{outline:3px solid var(--accent)}
+.output{font-size:1.4rem;font-weight:700;overflow-wrap:anywhere}
+small{display:block}.flow{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.node{border:1px solid #8888;border-radius:10px;padding:12px;min-width:110px;text-align:center}
+#direction{font-size:1.5rem;font-weight:bold}pre{white-space:pre-wrap;overflow-wrap:anywhere}
+a{color:inherit}
+</style>
+</head>
+<body>
+<header><small class="muted">RETROSYNC / v0.10 / READ ONLY</small>
+<h1>SRAM policy simulator</h1>
+<p>Explore synchronization proposals without accessing any real save files.</p></header>
+<section class="panel">
+<h2>1. Choose a scenario</h2>
+<div id="presets"></div>
+<div class="grid">
+<label>Local (device)<select id="local"></select></label>
+<label>Remote (NAS)<select id="remote"></select></label>
+<label>Last synced baseline<select id="baseline"></select></label>
+</div>
+<p class="muted">A, B and C represent distinct SHA-256 digests. Missing means no file, or no recorded history for the baseline. A baseline is not proof of provenance.</p>
+<div class="grid">
+<label>Conflict policy<select id="sram"><option>manual</option><option>prefer_local</option><option>prefer_remote</option></select></label>
+<label>Missing-file policy<select id="missing"><option>create_new</option><option>block</option><option>restore</option></select></label>
+</div>
+</section>
+<section class="panel" aria-live="polite">
+<h2>2. Proposed result</h2>
+<div class="flow"><div class="node">Device<br><strong id="localValue"></strong></div><span id="direction"></span><div class="node">NAS<br><strong id="remoteValue"></strong></div></div>
+<p>Classification: <strong id="classification"></strong></p>
+<div class="output" id="action"></div><p id="explanation"></p>
+<p><strong>Authorized writes: 0</strong></p>
+<small class="muted">Proposals only. Platform attribution, core compatibility, baseline provenance, mount and emulator activity are not verified here. Save states are excluded. No deletion is proposed.</small>
+</section>
+<section class="panel">
+<h2>3. Reference scenario checks</h2>
+<p>Run the same 576 reference cases used by the Python unit tests. Load the adjacent JSON automatically when served over HTTP(S), or select the local reference file when opening this page offline.</p>
+<button id="runTests">Run reference checks</button>
+<label for="fixture">Local reference JSON</label><input type="file" id="fixture" accept=".json,application/json">
+<pre id="testResult" role="status">Not run.</pre>
+</section>
+<footer class="muted"><a href="https://github.com/TheDiB/RetroSync">RetroSync on GitHub</a> · No external scripts or dependencies.</footer>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const versions = [null,"A","B","C"];
+const conflicts = ["manual","prefer_local","prefer_remote"];
+const missingPolicies = ["block","create_new","restore"];
+function propose(local, remote, baseline, sram, missing) {
+  if (![local,remote,baseline].every(v=>versions.includes(v)) ||
+      !conflicts.includes(sram) || !missingPolicies.includes(missing)) throw Error("Invalid scenario");
+  let classification;
+  if(local===null && remote===null) classification="MISSING_BOTH";
+  else if(local===null) classification="MISSING_LOCAL";
+  else if(remote===null) classification="MISSING_REMOTE";
+  else if(local===remote) classification="IN_SYNC";
+  else if(baseline===null) classification="INITIAL_CONFLICT";
+  else if(local===baseline) classification="PULL";
+  else if(remote===baseline) classification="PUSH";
+  else classification="CONFLICT";
+  let action="BLOCKED";
+  switch(classification){
+    case "IN_SYNC": action="NOOP"; break;
+    case "PUSH": case "PULL": action=classification+"_PROPOSED"; break;
+    case "CONFLICT": case "INITIAL_CONFLICT":
+      action={manual:"BLOCKED",prefer_local:"PUSH_PROPOSED",prefer_remote:"PULL_PROPOSED"}[sram]; break;
+    case "MISSING_LOCAL": case "MISSING_REMOTE":
+      if(missing!=="block"){
+        const side=classification.slice(8);
+        action=baseline===null?"CREATE_"+side:missing==="restore"?"RESTORE_"+side:"CONFIRM_RESTORE";
+      }
+  }
+  return {classification,action,write_authorized:false};
+}
+const explanations={
+ NOOP:"Both files have identical content. No copy is proposed.",
+ BLOCKED:"No copy is proposed under the selected policy.",
+ PUSH_PROPOSED:"Propose copying the local version to the NAS, subject to safety checks.",
+ PULL_PROPOSED:"Propose copying the NAS version to the device, subject to safety checks.",
+ CREATE_LOCAL:"No history recorded. Propose creating a missing local file without overwrite.",
+ CREATE_REMOTE:"No history recorded. Propose creating a missing remote file without overwrite.",
+ RESTORE_LOCAL:"Propose restoring a previously tracked local file.",
+ RESTORE_REMOTE:"Propose restoring a previously tracked remote file.",
+ CONFIRM_RESTORE:"A previously tracked file is missing. Explicit confirmation is required."
+};
+for(const id of ["local","remote","baseline"]){
+  for(const v of versions){
+    const option=document.createElement("option");option.value=v??"";
+    option.textContent=v===null?(id==="baseline"?"No history":"Missing"):"Version "+v;
+    $(id).append(option);
+  }
+}
+function render(){
+  const l=$("local").value||null,r=$("remote").value||null,b=$("baseline").value||null;
+  const result=propose(l,r,b,$("sram").value,$("missing").value);
+  $("localValue").textContent=l??"Missing";$("remoteValue").textContent=r??"Missing";
+  $("classification").textContent=result.classification;$("action").textContent=result.action;
+  $("explanation").textContent=explanations[result.action];
+  $("direction").textContent=["PUSH_PROPOSED","CREATE_REMOTE","RESTORE_REMOTE"].includes(result.action)?"→":
+    ["PULL_PROPOSED","CREATE_LOCAL","RESTORE_LOCAL"].includes(result.action)?"←":result.action==="NOOP"?"=":"—";
+}
+function preset(l,r,b,s="manual",m="create_new"){
+  $("local").value=l??"";$("remote").value=r??"";$("baseline").value=b??"";
+  $("sram").value=s;$("missing").value=m;render();
+}
+for(const [name,l,r,b] of [
+ ["New game","A",null,null],["New device",null,"A",null],["Local progress","B","A","A"],
+ ["Remote progress","A","B","A"],["Lost file",null,"A","A"],["Initial conflict","A","B",null],
+ ["Both changed","B","C","A"],["Both missing",null,null,"A"],["In sync","A","A","A"]]){
+  const button=document.createElement("button");button.textContent=name;
+  button.addEventListener("click",()=>preset(l,r,b));$("presets").append(button);
+}
+for(const id of ["local","remote","baseline","sram","missing"])$(id).addEventListener("change",render);
+preset("A","B",null);
+function check(data){
+  const columns=["local","remote","baseline","sram","missing","classification","action","write_authorized"];
+  if(data.schema_version!==1||JSON.stringify(data.columns)!==JSON.stringify(columns)||
+    !Array.isArray(data.cases)||data.cases.length!==576)throw Error("Invalid reference schema or case count");
+  const seen=new Set();let passed=0;const failures=[];
+  for(const row of data.cases){
+    if(!Array.isArray(row)||row.length!==8)throw Error("Invalid reference row");
+    const [l,r,b,s,m,c,a,w]=row;
+    const key=JSON.stringify(row.slice(0,5));
+    if(seen.has(key))throw Error("Duplicate scenario: "+key);
+    seen.add(key);
+    const result=propose(l,r,b,s,m);
+    if(result.classification===c&&result.action===a&&w===false&&result.write_authorized===false)passed++;
+    else failures.push(key+" expected "+c+"/"+a+" got "+result.classification+"/"+result.action);
+  }
+  $("testResult").textContent=passed+"/576 passed; "+failures.length+" failed.\n"+failures.slice(0,20).join("\n");
+}
+async function runChecks(){
+  try{
+    const file=$("fixture").files[0];
+    if(file){check(JSON.parse(await file.text()));return;}
+    if(location.protocol==="file:")throw Error("Select simulator-scenarios.json from the docs directory first.");
+    const response=await fetch("./simulator-scenarios.json",{cache:"no-store"});
+    if(!response.ok)throw Error("Reference file unavailable: HTTP "+response.status);
+    check(await response.json());
+  }catch(error){$("testResult").textContent="ERROR: "+error.message;}
+}
+$("runTests").addEventListener("click",runChecks);
+</script>
+</body>
+</html>
