@@ -4,9 +4,9 @@ RetroSync is a Python prototype for **read-only** inspection, comparison, and pl
 
 ## Status
 
-**v0.9 — release candidate (PR #9, pending merge and final test run).** Latest merged milestone before this PR: **v0.8**.
+**v0.9 — validated release candidate (PR #9, pending merge).** Latest merged milestone before this PR: **v0.8**.
 
-The v0.9 platform preview has been exercised on a Steam Deck against a real NAS share (49 GBC files, two JSON reports and a human-readable report). The **112-test suite passed** before the final human-report changes; the **118-test suite has not yet been rerun**. These milestones are not necessarily packaged releases.
+The v0.9 platform preview has been exercised on a Steam Deck against a real NAS share (49 GBC files, two JSON reports and a human-readable report). The complete **118-test suite passed on Steam Deck** on 2026-11-23 (commit `0e0ea54`). These milestones are not necessarily packaged releases.
 
 **No production save synchronization exists.** Normal inspection and planning commands never copy, overwrite, rename or delete saves. The only normal CLI file creation is an explicitly confirmed **new configuration file** via `--setup`. Experimental fixture-only copy/recovery modules are not wired to the CLI.
 
@@ -97,7 +97,7 @@ The original per-game SRAM planner can propose `PUSH` or `PULL` when a trusted b
 python3 -m unittest discover -s tests -v
 ```
 
-The unit suite uses disposable fixtures and does not require live NAS or SSH access. **112 tests were confirmed passing** on Steam Deck before the final v0.9 report additions. **118 tests are expected** on the current PR branch; that full run is pending. The human-readable report was exercised successfully against the live GBC inventory.
+The unit suite uses disposable fixtures and does not require live NAS or SSH access. **112 tests were confirmed passing** on Steam Deck before the final v0.9 report additions. The complete **118-test suite passed** on Steam Deck on 2026-11-23 (commit `0e0ea54`, 0.053 s). The human-readable report was exercised successfully against the live GBC inventory.
 
 ## Safety and next steps
 
