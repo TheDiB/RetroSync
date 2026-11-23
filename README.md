@@ -1,45 +1,51 @@
 # RetroSync
 
-Read-only prototype for inspecting and planning RetroArch SRAM synchronization between a local device and a NAS shared with Batocera.
+RetroSync is a Python prototype for **read-only** inspection, comparison, and planning of RetroArch SRAM saves between a local device (such as a Steam Deck) and a NAS shared with Batocera.
 
 ## Status
 
-**v0.9 development — guided, non-destructive configuration.** Latest merged milestone: **v0.8** (Batocera SSH preflight and documentation, tested on Steam Deck and Windows). All normal CLI operations remain read-only. There is **no production save synchronization or write mode**.
+**v0.9 — release candidate (PR #9, pending merge and final test run).** Latest merged milestone before this PR: **v0.8**.
+
+The v0.9 platform preview has been exercised on a Steam Deck against a real NAS share (49 GBC files, two JSON reports and a human-readable report). The **112-test suite passed** before the final human-report changes; the **118-test suite has not yet been rerun**. These milestones are not necessarily packaged releases.
+
+**No production save synchronization exists.** Normal inspection and planning commands never copy, overwrite, rename or delete saves. The only normal CLI file creation is an explicitly confirmed **new configuration file** via `--setup`. Experimental fixture-only copy/recovery modules are not wired to the CLI.
 
 | Milestone | Capability |
 | --- | --- |
-| v0.1–v0.3 | Inventory, SHA-256 SRAM decisions and read-only plans |
-| v0.4 | Preflight checks and terminal status colors |
-| v0.5–v0.6 | Experimental **fixture-only** safe-copy and recovery audit (not connected to CLI) |
-| v0.7 | Standalone Batocera SSH RetroArch detector |
-| v0.8 | Optional remote activity check in `--check`, plus documentation cleanup |
-| v0.9 (in progress) | Guided configuration, platform inventory, SHA-256 comparison and human-readable report |
+| v0.1–v0.3 | Read-only inventory, SHA-256 SRAM decisions and plans |
+| v0.4 | Local preflight, verified CIFS mount and terminal colors |
+| v0.5–v0.6 | Isolated **fixture-only** copy and recovery experiments |
+| v0.7 | Standalone Batocera RetroArch activity detector via SSH |
+| v0.8 | Optional Batocera SSH activity check in `--check` |
+| **v0.9 (PR #9)** | Guided setup, platform inventory, comparison and human report |
 
-See [CHANGELOG.md](CHANGELOG.md) for detailed milestones and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for PR history and future work.
+See [CHANGELOG.md](CHANGELOG.md) for milestone details, [development history](docs/DEVELOPMENT.md) for PRs and roadmap, and [architecture](docs/architecture.md) for safety boundaries.
 
 ## Requirements
 
 - Python 3.9+
-- Linux and `findmnt` with an already mounted CIFS share for full inventory/preflight
-- OpenSSH client and preconfigured, trusted key authentication for optional Batocera activity checks
+- For live NAS inventory on Linux: an **already mounted CIFS share** and `findmnt`
+- For optional Batocera activity checks: OpenSSH client and independently configured, trusted key authentication
 - No third-party Python packages
 
 ## Configuration
 
-Copy `config.example.json` to a private `config.json` and adjust device paths, NAS source, and games. **Never commit private configuration or SSH private keys.**
+Use `config.example.json` as a starting point or the `--setup` wizard. Keep the real `config.json` private: **never commit personal configuration or SSH private keys**.
 
-The optional `batocera` object enables the read-only SSH process check:
+Schema version **1** remains in use and explicitly lists games for the existing per-game planner. The new platform preview does **not** persist platform mappings or automatically add games to the configuration.
+
+An optional Batocera SSH endpoint can be declared:
 
 ```json
 "batocera": {
-  "host": "192.168.1.75",
+  "host": "BATOCERA_HOST",
   "user": "root"
 }
 ```
 
-If omitted, remote activity stays `UNKNOWN` (advisory). Configure and verify SSH separately using [docs/SSH_SETUP.md](docs/SSH_SETUP.md); the v0.9 `--setup` wizard configures an existing SSH endpoint but does not enroll keys.
+This enables read-only RetroArch activity detection in `--check`. It does **not** set up SSH trust or install keys; see [manual SSH setup](docs/SSH_SETUP.md).
 
-## Guided setup (v0.9 preview)
+## Guided setup (v0.9)
 
 ```bash
 mkdir -p ~/retro-sync-lab
@@ -47,9 +53,31 @@ python3 retro_sync.py --config ~/retro-sync-lab/config.json --setup --dry-run
 python3 retro_sync.py --config ~/retro-sync-lab/config.json --setup
 ```
 
-The wizard asks for one game, the existing NAS mount, and an optional Batocera endpoint. Dry run prints JSON without writing. Normal setup prints a preview and accepts `y` or `yes`; it creates only a **new** config file, never replaces one, and never mounts shares, connects over SSH, modifies keys, or writes saves. The parent directory must already exist. The existing config schema remains version 1. This is the first increment, **not** complete SSH enrollment.
+The wizard asks for a device ID, existing NAS mount and expected CIFS source, NAS saves root, **one game**, its local and NAS-relative save directories, and an optional Batocera SSH endpoint. `--dry-run` only previews the proposed JSON. Without `--dry-run`, confirmation with `y` or `yes` creates a **new** configuration file with restrictive permissions. Existing files are never overwritten, and the parent directory must already exist.
 
-## Usage
+Setup does not mount NAS shares, enroll SSH keys, modify SSH settings, or touch save files.
+
+## Read-only platform preview (v0.9)
+
+With an existing schema-v1 configuration and a verified CIFS mount:
+
+```bash
+python3 retro_sync.py --config ~/retro-sync-lab/config.json --platform-preview
+```
+
+The interactive preview asks for a platform ID (for example `gbc`), an absolute local save directory, a NAS-relative platform directory, and declared emulator/core information for each side. It scans **flat directories only** for `.srm`, `.state` and `.stateN` files. Subdirectories and symlinks are rejected; unknown extensions are ignored.
+
+Output, in order:
+
+1. **Inventory JSON**: both endpoints, filenames, category, state slot, size, modification time and SHA-256.
+2. **Comparison JSON**: exact-relative-filename matches classified as `IDENTICAL`, `DIFFERENT`, `LOCAL_ONLY` or `REMOTE_ONLY`.
+3. **Human-readable report**: SRAM/state counts, divergent and one-sided SRAM, same-side identical SRAM content under different filenames, and core compatibility warnings.
+
+The comparison is by **exact relative filename**; SHA-256 determines whether matching filenames have identical contents. Timestamps do **not** select winners. Equal hashes under different filenames are advisory, **not proof of identical games**. Declared cores (including `unknown`) are not verified compatibility evidence. Save states are inventoried but **not synchronization candidates**.
+
+The preview verifies the expected CIFS mount before scanning the NAS and makes **no configuration or save changes**.
+
+## Existing per-game inventory and preflight
 
 ```bash
 python3 retro_sync.py --config config.json --check
@@ -59,13 +87,9 @@ python3 retro_sync.py --config config.json --json
 python3 retro_sync.py --config config.json --check --color never
 ```
 
-`--check` reports local and remote conditions. If configured, remote RetroArch `RUNNING` is reported as `FAIL`; `STOPPED` as `PASS`; SSH failures as `UNKNOWN` (advisory). A local `FAIL` or a remote `RUNNING` makes the diagnostic exit with code 2. An `UNKNOWN` remote state alone does not make `--check` fail, **but must never authorize future writes**. A remote `STOPPED` snapshot is not a lock: other emulators, NAS clients, or a newly launched game may still write.
+`--check` reports local and optional remote conditions. Batocera RetroArch `RUNNING` becomes `FAIL`, `STOPPED` becomes `PASS`, and SSH failure or unrecognized output becomes advisory `UNKNOWN`. A local failure or observed remote `RUNNING` produces exit code 2. An `UNKNOWN` result is **not** permission for future writes, and a `STOPPED` snapshot is not a lock.
 
-The SRAM planner can propose `PUSH` or `PULL` with a trusted baseline, but does not execute either. Missing files are never treated as deletion instructions. Save states are inventoried, not synchronized.
-
-## Experimental platform discovery (API and preview CLI)
-
-`platform_discovery.py` provides a standalone, read-only API for flat directories with `.srm`, `.state`, and `.stateN` files. It records hashes and declared emulator/core identity on both endpoints, but does **not** infer compatibility, scan nested folders, validate a CIFS mount, or authorize copying. The caller must independently verify any NAS mount before invoking it. See `tests/test_platform_discovery.py` and [architecture](docs/architecture.md). Existing schema v1 and `--setup` are unchanged.
+The original per-game SRAM planner can propose `PUSH` or `PULL` when a trusted baseline supports a decision, but never executes the proposal. Missing files do not imply deletion.
 
 ## Tests
 
@@ -73,39 +97,16 @@ The SRAM planner can propose `PUSH` or `PULL` with a trusted baseline, but does 
 python3 -m unittest discover -s tests -v
 ```
 
-Unit tests do not require a live NAS or SSH server. Test fixture write operations must **never** be used against real saves.
+The unit suite uses disposable fixtures and does not require live NAS or SSH access. **112 tests were confirmed passing** on Steam Deck before the final v0.9 report additions. **118 tests are expected** on the current PR branch; that full run is pending. The human-readable report was exercised successfully against the live GBC inventory.
 
-## Design and safety
+## Safety and next steps
 
-See [docs/architecture.md](docs/architecture.md). Future write-enabled synchronization needs verified backups, locking/coordination with Batocera and other writers, integrity rechecks, crash recovery and SMB-aware durability. `safe_copy.py` and `recovery.py` are isolated experiments, **not production write tools**.
+All normal save operations remain read-only. `safe_copy.py` and `recovery.py` are **isolated fixture-only experiments**, not production tools. Do not run them against real saves.
 
-## Credits
+Future SRAM conflict handling may offer an **opt-in** per-platform policy: `manual` (default), `prefer_local`, or `prefer_remote`. **Not implemented in v0.9.** One-sided files/deletions require separate rules, and save states remain excluded. Any future write mode needs reliable backups, quiescence and multi-writer coordination, hash rechecks, crash recovery and SMB-aware durability.
 
-RetroSync is created and maintained by [TheDiB](https://github.com/TheDiB), with development assistance from [ChatGPT by OpenAI](https://chatgpt.com) for design discussions, Python implementation, documentation, and tests. All changes are reviewed and validated by the project maintainer.
+## Credits and license
+
+RetroSync is created and maintained by [TheDiB](https://github.com/TheDiB), with development assistance from [ChatGPT by OpenAI](https://chatgpt.com) for design discussions, Python implementation, documentation and tests. All changes are reviewed and validated by the project maintainer.
 
 Licensed under MIT.
-
-
-### Guided platform preview (experimental, v0.9 draft)
-
-With an **existing schema v1 config**, run:
-
-```bash
-python3 retro_sync.py --config ~/retro-sync-lab/config.json --platform-preview
-```
-
-This prompts for a platform ID, absolute local save directory, NAS-relative remote platform directory, and the emulator/core on each side (`unknown` is allowed). The CLI first verifies the configured CIFS mount, then inventories flat directories on both sides, including SRAM and `.stateN` files. It prints JSON and **does not change config or saves**. Core declarations are not compatibility guarantees. Subdirectories and symlinks fail closed. For initial trials, use disposable fixture directories under an already verified NAS mount; no production writes are implemented. `--setup` is unchanged and still configures one game.
-
-
-### Platform comparison (experimental)
-
-`--platform-preview` now prints a second, read-only JSON report comparing exact relative filenames between the local and NAS inventories. Statuses are `IDENTICAL`, `DIFFERENT`, `LOCAL_ONLY`, and `REMOTE_ONLY`; SHA-256, not modification time, determines equality. SRAM and save states are labelled separately, and save states remain inventory-only. The comparison does **not** infer ROM identity, core compatibility, sync direction, or whether a divergent file is safe to overwrite. No files are copied.
-
-
-### Human-readable diagnostics (v0.9 draft)
-
-The `--platform-preview` command prints a third section after the inventory and comparison JSON: a text report with counts split by SRAM/save state, divergent SRAM filenames, one-sided SRAM, identical SRAM content found under different names on the same endpoint, and core-compatibility warnings. These are **observations only**: matching hashes do not establish game identity or cross-core compatibility. No saves or configuration are modified.
-
-### Future SRAM conflict policy (design only; not implemented)
-
-A future explicit per-platform policy may support `manual` (default), `prefer_local`, or `prefer_remote` for **divergent SRAM**. The preferred endpoint would be authoritative only after verified mount, quiescence, destination backup, integrity rechecks, and safe recovery. One-sided files and deletions require separate rules; save states remain excluded. The v0.9 report never selects a winner or performs writes.
