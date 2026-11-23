@@ -228,3 +228,11 @@ __marimo__/
 *.srm
 *.state
 *.state[0-9]*
+
+# Local v2 configurations and generated reports
+/config-v2*.json
+!/config-v2.example.json
+/scan-report*.json
+/plan-*.json
+*.state.png
+*.state[0-9]*.png
