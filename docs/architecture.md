@@ -47,6 +47,6 @@ Potential opt-in SRAM authority policies: `manual` (default), `prefer_local`, `p
 
 ## Validation and limitations
 
-The GBC preview and human report have been exercised against 49 real files on Steam Deck. The previous **112-test** suite passed; the final **118-test** suite remains pending. Further testing should include larger libraries, changing files during scan, unusual names, case collisions, nested layouts and cross-platform path behavior.
+The GBC preview and human report have been exercised against 49 real files on Steam Deck. The final **118-test** suite passed on Steam Deck on 2026-11-23 (commit `0e0ea54`). Further testing should include larger libraries, changing files during scan, unusual names, case collisions, nested layouts and cross-platform path behavior.
 
 All current save-facing CLI operations remain read-only. `safe_copy.py` and `recovery.py` are fixture-only experiments, not production tools. Any future write mode requires verified backups, multi-writer coordination, integrity rechecks, SMB-aware durability and crash recovery.
