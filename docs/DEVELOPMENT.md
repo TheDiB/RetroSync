@@ -14,7 +14,7 @@
 | [#8](https://github.com/TheDiB/RetroSync/pull/8) | v0.8 | Remote preflight and documentation |
 | [#9](https://github.com/TheDiB/RetroSync/pull/9) | v0.9 (merged) | Guided setup, platform discovery, comparison and human report |
 
-| [#10](https://github.com/TheDiB/RetroSync/pull/10) | v0.10 (validated candidate) | Platform configuration, history, policy planning and simulator |
+| [#10](https://github.com/TheDiB/RetroSync/pull/10) | v0.10 (merged) | Platform configuration, history, policy planning and simulator |
 
 ## v0.9 validation
 
@@ -44,7 +44,7 @@ All eight development stages have been implemented: schema v2, CLI integration, 
 - Browser: 576/576 shared reference cases passed both offline and via HTTP.
 - Live GBC: 9 SRAM, 40 states excluded; no-history and synthetic-history plans, all three conflict and missing-file policies, invalid baseline/platform and incompatible CLI modes checked.
 - Synthetic history is test data only, not evidence of real synchronization.
-- PR #10 remains pending maintainer merge and release tagging.
+- PR #10 merged on 2026-11-23 (`67dd2fa`); release tagging and Pages publication are separate steps.
 
 ## Future work
 
