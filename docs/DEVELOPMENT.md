@@ -12,14 +12,14 @@
 | [#6](https://github.com/TheDiB/RetroSync/pull/6) | v0.6 | Fixture-only recovery |
 | [#7](https://github.com/TheDiB/RetroSync/pull/7) | v0.7 | Batocera SSH detector |
 | [#8](https://github.com/TheDiB/RetroSync/pull/8) | v0.8 | Remote preflight and documentation |
-| [#9](https://github.com/TheDiB/RetroSync/pull/9) | v0.9 (release candidate) | Guided setup, platform discovery, comparison and human report |
+| [#9](https://github.com/TheDiB/RetroSync/pull/9) | v0.9 (merged) | Guided setup, platform discovery, comparison and human report |
 
-## v0.9 release-candidate validation
+## v0.9 validation
 
 - **Confirmed:** 112 tests passed on Steam Deck before the final human-report changes.
 - **Confirmed:** live GBC inventory/comparison and human-readable report ran successfully on Steam Deck against a mounted NAS (49 files).
 - **Confirmed:** complete **118-test** suite passed on Steam Deck on 2026-11-23 (commit `0e0ea54`, 0.053 s).
-- **Pending:** maintainer approval and PR #9 merge. Do not label the milestone merged before that happens.
+- **Confirmed:** maintainer merged PR #9 on 2026-11-23 (`fe13a78`); merged content matches the final feature branch.
 
 ## Safety decisions
 
