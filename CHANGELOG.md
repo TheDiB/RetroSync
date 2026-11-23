@@ -2,7 +2,7 @@
 
 RetroSync uses incremental development milestones; these are **not necessarily packaged releases**. A milestone listed as a release candidate is not yet merged.
 
-## v0.10 — validated release candidate (PR #10, pending merge)
+## v0.10 — merged (PR #10, 2026-11-23)
 
 - Add schema-v2 platform mappings and inherited conflict/missing-file policies, preserving schema-v1 workflows.
 - Add offline configuration validation, bounded non-interactive scan and global read-only SRAM plan, with optional platform selection and JSON output.
