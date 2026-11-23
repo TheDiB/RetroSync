@@ -1,6 +1,6 @@
 # Changelog
 
-RetroSync uses incremental development milestones; these are **not necessarily packaged releases**. A milestone listed as a release candidate is not yet merged or fully validated.
+RetroSync uses incremental development milestones; these are **not necessarily packaged releases**. A milestone listed as a release candidate is not yet merged.
 
 ## v0.9 — release candidate (PR #9; not yet merged)
 
@@ -11,7 +11,7 @@ RetroSync uses incremental development milestones; these are **not necessarily p
 - Add read-only exact-filename comparison JSON: `IDENTICAL`, `DIFFERENT`, `LOCAL_ONLY`, `REMOTE_ONLY`. No winner is inferred from timestamps.
 - Add human-readable SRAM/state totals, divergent and one-sided SRAM, same-side duplicate-content advisories, and compatibility warnings.
 - Keep save states inventory-only; no production copy, overwrite, deletion, conflict resolution or SSH enrollment.
-- **Validation:** 112 tests passed on Steam Deck before the final report additions. The live GBC platform preview and human report succeeded (49 files). The final **118-test** suite remains to be run.
+- **Validation:** 112 tests passed on Steam Deck before the final report additions. The live GBC platform preview and human report succeeded (49 files). The final **118-test** suite passed on Steam Deck on 2026-11-23 (commit `0e0ea54`, 0.053 s).
 
 ## v0.8 — merged (PR #8)
 
