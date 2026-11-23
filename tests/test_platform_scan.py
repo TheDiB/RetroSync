@@ -99,3 +99,88 @@ class PlatformScanTests(unittest.TestCase):
                        return_value={"schema_version": 2, "warnings": []}):
                 with self.assertRaisesRegex(RuntimeError, "mount lost"):
                     scan_configured(config, verify)
+
+    def alias(self, link, target):
+        try:
+            link.symlink_to(target, target_is_directory=True)
+        except OSError as exc:
+            if getattr(exc, "winerror", None) == 1314:
+                self.skipTest("Symlink privilege unavailable")
+            raise
+
+    def scan_fixture(self, config):
+        with patch("platform_scan.configuration_report",
+                   return_value={"schema_version": 2, "warnings": []}):
+            return scan_configured(config, Mock())
+
+    def test_local_parent_alias_allowed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            config = self.fixture(root)
+            alias = root / "alias"
+            self.alias(alias, root)
+            config["platforms"][0]["local"]["save_dir"] = str(alias / "gbc")
+            report = self.scan_fixture(config)
+            paths = report["platforms"][0]["paths"]["local"]
+            self.assertEqual(paths["configured_path"], str(alias / "gbc"))
+            self.assertEqual(paths["resolved_path"], str(root / "gbc"))
+            self.assertTrue(paths["symlink_resolved"])
+            self.assertEqual(report["platforms"][0]["comparison"]["counts"]["DIFFERENT"], 1)
+            self.assertIn("local alias:", render_scan(report))
+
+    def test_local_target_symlink_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            config = self.fixture(root)
+            self.alias(root / "alias", root / "gbc")
+            config["platforms"][0]["local"]["save_dir"] = str(root / "alias")
+            with self.assertRaisesRegex(ValueError, "Symlinked endpoint"):
+                self.scan_fixture(config)
+
+    def test_remote_parent_alias_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            config = self.fixture(root)
+            self.alias(root / "nas" / "alias", root / "nas" / "Save")
+            config["nas"]["remote_root"] = "alias"
+            with self.assertRaisesRegex(ValueError, "Symlinked endpoint"):
+                self.scan_fixture(config)
+
+    def test_broken_parent_alias_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            config = self.fixture(root)
+            self.alias(root / "alias", root / "missing")
+            config["platforms"][0]["local"]["save_dir"] = str(root / "alias" / "gbc")
+            with self.assertRaises(OSError):
+                self.scan_fixture(config)
+
+    def test_alias_collision_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            config = self.fixture(root)
+            self.alias(root / "alias", root)
+            config["platforms"][1]["local"]["save_dir"] = str(root / "alias" / "gbc")
+            with self.assertRaisesRegex(ValueError, "Overlapping endpoint"):
+                self.scan_fixture(config)
+
+    def test_alias_retarget_during_scan_refused(self):
+        from platform_discovery import discover_platform
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder).resolve()
+            config = self.fixture(root)
+            alias = root / "alias"
+            self.alias(alias, root)
+            other = root / "other"
+            (other / "gbc").mkdir(parents=True)
+            config["platforms"][0]["local"]["save_dir"] = str(alias / "gbc")
+
+            def retarget(mapping):
+                result = discover_platform(mapping)
+                alias.unlink()
+                self.alias(alias, other)
+                return result
+
+            with patch("platform_scan.discover_platform", side_effect=retarget):
+                with self.assertRaisesRegex(RuntimeError, "Endpoint changed"):
+                    self.scan_fixture(config)
