@@ -4,9 +4,9 @@ RetroSync is a Python prototype for **read-only** inspection, comparison, and pl
 
 ## Status
 
-**v0.10 — validated release candidate (PR #10, pending merge).** Latest merged milestone: v0.9.
+**v0.10 — latest merged milestone (PR #10, 2026-11-23).**
 
-The v0.10 candidate passed 186 tests on SteamOS and 178 on Windows (8 symlink privilege skips), at commit `567cf41`. The HTML simulator passed all 576 shared reference scenarios offline and over HTTP. Live GBC planning was validated with and without synthetic history.
+The v0.10 milestone passed 186 tests on SteamOS and 178 on Windows (8 symlink privilege skips), at commit `567cf41`. The HTML simulator passed all 576 shared reference scenarios offline and over HTTP. Live GBC planning was validated with and without synthetic history.
 
 **No production save synchronization exists.** Normal inspection and planning commands never copy, overwrite, rename or delete saves. The only normal CLI file creation is an explicitly confirmed **new configuration file** via `--setup`. Experimental fixture-only copy/recovery modules are not wired to the CLI.
 
