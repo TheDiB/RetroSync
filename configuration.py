@@ -91,3 +91,30 @@ def validate_config(config):
 def load_config(path):
     """Read configuration without writing or contacting endpoints."""
     return validate_config(json.loads(Path(path).read_text(encoding="utf-8")))
+
+
+def configuration_report(config):
+    """Offline structural report; v1 is recognized, not fully validated."""
+    validate_config(config)
+    version = config["schema_version"]
+    report = {"schema_version": version, "device_id": config.get("device_id"),
+              "status": "VALID" if version == 2 else "LEGACY_SCHEMA_RECOGNIZED",
+              "read_only": True, "platforms": [], "warnings": []}
+    if version == 1:
+        return report
+    seen = {"local": {}, "remote": {}}
+    for platform in config["platforms"]:
+        report["platforms"].append({
+            "id": platform["id"],
+            "local_core": platform["local"]["core"],
+            "remote_core": platform["remote"]["core"],
+            "policy": resolve_policy(config.get("policy"), platform.get("policy"))})
+        for side in seen:
+            directory = PurePosixPath(platform[side]["save_dir"])
+            for previous, owner in seen[side].items():
+                if directory == previous or directory in previous.parents or previous in directory.parents:
+                    report["warnings"].append(
+                        f"Overlapping {side} directories: {owner} and {platform['id']}; "
+                        "explicit disambiguation required before platform scanning")
+            seen[side][directory] = platform["id"]
+    return report
