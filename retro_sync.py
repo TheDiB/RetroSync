@@ -8,6 +8,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from platform_plan import build_plan, render_plan
 from platform_scan import scan_configured, render_scan
 from configuration import load_config, configuration_report
 from decision import baseline_hash, decide, load_baseline
@@ -65,7 +66,8 @@ def main():
     parser.add_argument('--json', action='store_true', help='Print machine-readable JSON')
     parser.add_argument('--baseline', type=Path, help='Trusted last-synced SRAM hashes (read only)')
     parser.add_argument('--scan', action='store_true', help='Scan configured v2 platforms read-only')
-    parser.add_argument('--platform', help='Restrict --scan to one configured platform')
+    parser.add_argument('--plan', action='store_true', help='Propose v2 SRAM actions read-only')
+    parser.add_argument('--platform', help='Restrict --scan or --plan to one configured platform')
     parser.add_argument('--validate-config', action='store_true', help='Validate configuration offline')
     parser.add_argument('--check', action='store_true', help='Run read-only environment preflight checks')
     parser.add_argument('--setup', action='store_true', help='Guided configuration, never overwrite existing files')
@@ -74,8 +76,10 @@ def main():
     parser.add_argument('--color', choices=('auto', 'always', 'never'), default='auto',
                         help='Colorize terminal status labels (default: auto)')
     args = parser.parse_args()
-    if args.platform is not None and not args.scan:
-        parser.error('--platform requires --scan')
+    if args.platform is not None and not (args.scan or args.plan):
+        parser.error('--platform requires --scan or --plan')
+    if args.plan and (args.scan or args.setup or args.platform_preview or args.check or args.dry_run or args.validate_config):
+        parser.error('--plan must be used independently (optionally with --platform, --baseline and --json)')
     if args.scan and (args.setup or args.platform_preview or args.check or args.baseline or args.dry_run or args.validate_config):
         parser.error('--scan must be used independently (optionally with --platform and --json)')
     if args.validate_config and (args.setup or args.platform_preview or args.check or args.baseline or args.dry_run):
@@ -108,12 +112,16 @@ def main():
             print("No filesystem scan performed.")
             print("No configuration or save files modified.")
         return 0
+    if args.plan:
+        report = build_plan(config, check_mount, args.platform, args.baseline)
+        print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else render_plan(report))
+        return 0
     if args.scan:
         report = scan_configured(config, check_mount, args.platform)
         print(json.dumps(report, indent=2, ensure_ascii=False) if args.json else render_scan(report))
         return 0
     if config['schema_version'] == 2:
-        raise RuntimeError('Schema v2 currently supports --validate-config and --scan only')
+        raise RuntimeError('Schema v2 currently supports --validate-config, --scan and --plan only')
     if args.platform_preview:
         return run_platform_preview(config, verify_mount=check_mount)
     if args.check:
