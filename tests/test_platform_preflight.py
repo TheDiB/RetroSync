@@ -109,3 +109,16 @@ class PlatformPreflightTests(unittest.TestCase):
             result = preflight_v2(self.config, self.mount, local_detector=self.local,
                                   remote_detector=self.remote)
         self.assertEqual(result["status"], "DEFERRED")
+
+    def test_both_emulators_running(self):
+        self.local.return_value = ("RUNNING", "local")
+        self.remote.return_value = ("RUNNING", "remote")
+        result = self.run_check()
+        self.assertEqual(result["status"], "DEFERRED")
+        checks = {c["name"]: c for c in result["checks"]}
+        for name in ("retroarch_local", "retroarch_remote"):
+            self.assertEqual(checks[name]["status"], "DEFERRED")
+            self.assertEqual(checks[name]["reason"], "EMULATOR_RUNNING")
+        self.assertEqual(checks["endpoint_recheck"]["status"], "PASS")
+        self.assertIs(result["write_authorized"], False)
+        self.assertIs(result["coordination_verified"], False)
